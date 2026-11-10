@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>X32 Volunteer Training Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Firebase SDKs (compat — no bundler needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+<style>
+:root{--bg:#0a0f1e;--s1:#0f172a;--s2:#1e293b;--s3:#334155;--t:#f1f5f9;--m:#94a3b8;--ac:#0ea5e9;--ad:rgba(14,165,233,.13);--ok:#22c55e;--od:rgba(34,197,94,.13);--wn:#f59e0b;--wd:rgba(245,158,11,.13);--er:#ef4444;--ed:rgba(239,68,68,.13);--r:10px;--sw:268px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--t);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.5}
+/* Layout */
+#shell{display:flex;height:100vh;overflow:hidden}
+#sb{width:var(--sw);min-width:var(--sw);background:var(--s1);border-right:1px solid var(--s3);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+#main{flex:1;overflow-y:auto;background:var(--bg)}
+/* Sidebar */
+.sb-top{padding:18px 16px 14px;border-bottom:1px solid var(--s3);flex-shrink:0}
+.sb-brand{display:flex;align-items:center;gap:10px}
+.sb-icon{width:38px;height:38px;background:var(--ac);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.sb-name{font-size:14px;font-weight:700;line-height:1.1}
+.sb-sub{font-size:11px;color:var(--m);font-weight:400}
+.sb-prog{margin-top:14px}
+.sb-plabel{display:flex;justify-content:space-between;font-size:11px;color:var(--m);margin-bottom:5px}
+.sb-pbar{height:4px;background:var(--s3);border-radius:99px;overflow:hidden}
+.sb-pfill{height:100%;background:var(--ac);border-radius:99px;transition:width .4s}
+.sb-sec{padding:12px 10px 4px}
+.sb-seclabel{font-size:10px;font-weight:700;color:var(--m);letter-spacing:.08em;text-transform:uppercase;padding:0 8px 8px}
+.ni{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;cursor:pointer;transition:background .12s;border:none;background:none;width:100%;text-align:left;color:var(--t);font-size:13px;font-weight:500}
+.ni:hover{background:var(--s2)}
+.ni.active{background:var(--ad);color:var(--ac)}
+.ni.done .ni-icon{color:var(--ok)}
+.ni-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.ni-label{flex:1;line-height:1.2}
+.ni-score{font-size:11px;color:var(--m)}
+/* Views */
+.view{display:none;padding:28px 32px;max-width:860px;margin:0 auto}
+.view.on{display:block}
+/* Page header */
+.ph{margin-bottom:22px}
+.ph h2{font-size:22px;font-weight:700;margin-bottom:4px}
+.ph p{font-size:14px;color:var(--m)}
+/* Hero */
+.hero{background:linear-gradient(135deg,var(--s1),#162040);border:1px solid var(--s3);border-radius:14px;padding:28px;margin-bottom:24px}
+.hero h2{font-size:24px;font-weight:800;margin-bottom:6px}
+.hero p{color:var(--m);font-size:14px;max-width:460px;line-height:1.55}
+.hero-quote{margin-top:14px;padding:11px 16px;background:var(--ad);border-left:3px solid var(--ac);border-radius:0 8px 8px 0;font-style:italic;font-size:14px;color:var(--ac)}
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.sc{background:var(--s1);border:1px solid var(--s3);border-radius:var(--r);padding:16px 14px}
+.sc-val{font-size:26px;font-weight:800;line-height:1}
+.sc-lbl{font-size:12px;color:var(--m);margin-top:3px}
+.sc.a .sc-val{color:var(--ac)}.sc.g .sc-val{color:var(--ok)}.sc.w .sc-val{color:var(--wn)}
+/* Lesson cards grid */
+.lgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+.lcard{background:var(--s1);border:1px solid var(--s3);border-radius:var(--r);padding:16px;cursor:pointer;transition:all .18s;position:relative}
+.lcard:hover{border-color:var(--ac);transform:translateY(-1px)}
+.lcard.done{border-color:var(--ok)}
+.lcard-status{position:absolute;top:12px;right:12px;font-size:16px}
+.lcard-icon{font-size:22px;margin-bottom:8px}
+.lcard-num{font-size:11px;color:var(--m);margin-bottom:1px}
+.lcard-title{font-size:14px;font-weight:600;margin-bottom:4px;line-height:1.2}
+.lcard-dur{font-size:12px;color:var(--m)}
+.lcard-score{font-size:11px;color:var(--m);margin-top:4px}
+/* Section title */
+.stitle{font-size:15px;font-weight:700;margin-bottom:12px}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all .13s;font-family:inherit}
+.btn-p{background:var(--ac);color:#fff}.btn-p:hover{background:#0284c7}
+.btn-g{background:var(--ok);color:#fff}.btn-g:hover{background:#16a34a}
+.btn-o{background:transparent;color:var(--t);border:1px solid var(--s3)}.btn-o:hover{background:var(--s2)}
+.btn-sm{padding:6px 13px;font-size:13px}
+.btn-lg{padding:12px 24px;font-size:15px}
+.brow{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
+/* Lesson view */
+.lhdr{background:var(--s1);border:1px solid var(--s3);border-radius:14px;padding:24px;margin-bottom:20px}
+.bc{font-size:12px;color:var(--m);margin-bottom:9px;display:flex;align-items:center;gap:5px}
+.bc a{color:var(--ac);cursor:pointer;text-decoration:none}
+.lhdr-row{display:flex;gap:14px;align-items:flex-start}
+.lhdr-bigicon{font-size:34px;margin-top:2px}
+.lhdr-info{}
+.lhdr-num{font-size:11px;color:var(--m);margin-bottom:1px}
+.lhdr-title{font-size:22px;font-weight:700;margin-bottom:7px}
+.lhdr-meta{display:flex;gap:10px;flex-wrap:wrap}
+.psteps{display:flex;gap:3px;margin-top:16px}
+.ps{flex:1;height:3px;background:var(--s3);border-radius:99px}
+.ps.done{background:var(--ok)}.ps.cur{background:var(--ac)}
+/* Tags */
+.tag{display:inline-flex;align-items:center;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:600}
+.tag-b{background:var(--ad);color:var(--ac)}
+.tag-g{background:var(--od);color:var(--ok)}
+.tag-w{background:var(--wd);color:var(--wn)}
+/* Content sections */
+.cs{background:var(--s1);border:1px solid var(--s3);border-radius:var(--r);padding:22px;margin-bottom:14px}
+.cs h3{font-size:15px;font-weight:700;color:var(--ac);margin-bottom:14px;display:flex;align-items:center;gap:7px}
+/* Quote */
+.cquote{padding:12px 16px;background:var(--ad);border-left:3px solid var(--ac);border-radius:0 8px 8px 0;font-style:italic;font-size:14px;line-height:1.6;margin-bottom:14px}
+/* Rules list */
+.rlist{display:flex;flex-direction:column;gap:9px}
+.ri{display:flex;gap:12px;align-items:flex-start;padding:13px;background:var(--s2);border-radius:8px}
+.ri-n{width:26px;height:26px;background:var(--ac);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;margin-top:1px}
+.ri-t{font-size:14px;font-weight:600;margin-bottom:1px}
+.ri-d{font-size:13px;color:var(--m);line-height:1.4}
+/* Terms table */
+.tt{width:100%;border-collapse:collapse}
+.tt th{text-align:left;padding:9px 13px;font-size:11px;font-weight:700;color:var(--m);border-bottom:1px solid var(--s3);text-transform:uppercase;letter-spacing:.06em}
+.tt td{padding:11px 13px;border-bottom:1px solid rgba(51,65,85,.4);font-size:14px;vertical-align:top;line-height:1.4}
+.tt tr:last-child td{border-bottom:none}
+.tt td:first-child{font-weight:700;color:var(--ac);width:140px;white-space:nowrap}
+/* Steps */
+.slist{display:flex;flex-direction:column;gap:11px}
+.si{display:flex;gap:11px}
+.si-n{width:24px;height:24px;background:var(--s3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:2px}
+.si-t{font-size:14px;font-weight:600;margin-bottom:2px}
+.si-d{font-size:13px;color:var(--m);line-height:1.4}
+/* Callouts */
+.ca{padding:13px 15px;border-radius:8px;margin-bottom:12px;display:flex;gap:9px;align-items:flex-start}
+.ca-i{background:var(--ad);border:1px solid rgba(14,165,233,.25)}
+.ca-w{background:var(--wd);border:1px solid rgba(245,158,11,.25)}
+.ca-g{background:var(--od);border:1px solid rgba(34,197,94,.25)}
+.ca-icon{font-size:17px;flex-shrink:0;margin-top:1px}
+.ca-txt{font-size:13px;line-height:1.55}
+.ca-txt strong{display:block;margin-bottom:2px;font-weight:700}
+/* Compare */
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.cc{padding:15px;border-radius:8px;border:1px solid var(--s3)}
+.cc.ca{background:rgba(14,165,233,.07);border-color:rgba(14,165,233,.3)}
+.cc.cb{background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.3)}
+.cc h4{font-size:12px;font-weight:800;margin-bottom:9px;text-transform:uppercase;letter-spacing:.07em}
+.cc.ca h4{color:var(--ac)}.cc.cb h4{color:var(--ok)}
+.cc ul{list-style:none}
+.cc li{font-size:13px;color:var(--m);padding:4px 0;line-height:1.3;display:flex;gap:7px}
+.cc li::before{content:"→";color:var(--m);flex-shrink:0}
+/* Mute demo */
+.mdemo{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+.ms{padding:16px;border-radius:10px;text-align:center}
+.ms.on{background:var(--ed);border:2px solid var(--er)}
+.ms.off{background:var(--od);border:2px solid var(--ok)}
+.ms-btn{width:60px;height:22px;border-radius:4px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:.05em}
+.ms-btn.lit{background:var(--er);color:#fff}
+.ms-btn.dark{background:var(--s3);color:var(--m)}
+.ms-title{font-size:14px;font-weight:700;margin-bottom:3px}
+.ms.on .ms-title{color:var(--er)}.ms.off .ms-title{color:var(--ok)}
+.ms-desc{font-size:12px;color:var(--m);line-height:1.3}
+/* Meter diagram */
+.mvis{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:11px}
+.mst{padding:13px 10px;border-radius:8px;background:var(--s2);text-align:center;border:1px solid var(--s3)}
+.mbar{height:56px;width:18px;margin:0 auto 9px;background:var(--s3);border-radius:4px;position:relative;overflow:hidden}
+.mfill{position:absolute;bottom:0;left:0;right:0;border-radius:4px}
+.mst.mn .mfill{height:5%;background:#374151}
+.mst.ml .mfill{height:22%;background:var(--ok)}
+.mst.mg .mfill{height:68%;background:linear-gradient(to top,var(--ok) 55%,var(--wn))}
+.mst.mc .mfill{height:100%;background:linear-gradient(to top,var(--ok) 35%,var(--wn) 60%,var(--er))}
+.mst-lbl{font-size:11px;font-weight:700;margin-bottom:3px}
+.mst.mn .mst-lbl{color:var(--m)}.mst.ml .mst-lbl{color:var(--wn)}.mst.mg .mst-lbl{color:var(--ok)}.mst.mc .mst-lbl{color:var(--er)}
+.mst-desc{font-size:10px;color:var(--m);line-height:1.3}
+/* Trouble table */
+.trtbl{width:100%;border-collapse:collapse}
+.trtbl th{text-align:left;padding:9px 13px;font-size:11px;font-weight:700;color:var(--m);border-bottom:1px solid var(--s3);text-transform:uppercase;letter-spacing:.06em}
+.trtbl td{padding:11px 13px;border-bottom:1px solid rgba(51,65,85,.4);font-size:13px;vertical-align:top;line-height:1.5}
+.trtbl tr:last-child td{border-bottom:none}
+.trtbl td:first-child{font-weight:700;color:var(--wn);width:170px}
+/* Monitor requests */
+.mreqs{display:flex;flex-direction:column;gap:9px}
+.mreq{display:flex;border-radius:8px;overflow:hidden;border:1px solid var(--s3)}
+.mreq-says{flex:1;padding:11px 13px;background:var(--s2);font-size:13px;font-style:italic}
+.mreq-arr{padding:0 10px;background:var(--ad);display:flex;align-items:center;color:var(--ac);font-weight:700;font-size:16px}
+.mreq-do{flex:1.4;padding:11px 13px;background:var(--s1);font-size:13px;color:var(--m);display:flex;align-items:center}
+/* Lesson nav */
+.lnav{display:flex;justify-content:space-between;padding:18px 0;border-top:1px solid var(--s3);margin-top:8px}
+/* Quiz */
+.qhdr{display:flex;justify-content:space-between;margin-bottom:20px;font-size:13px;color:var(--m)}
+.qpbar{height:4px;background:var(--s3);border-radius:99px;margin-bottom:26px;overflow:hidden}
+.qpfill{height:100%;background:var(--ac);border-radius:99px;transition:width .3s}
+.qq{font-size:17px;font-weight:600;line-height:1.4;margin-bottom:22px}
+.qopts{display:flex;flex-direction:column;gap:9px}
+.qo{padding:13px 17px;border-radius:9px;border:2px solid var(--s3);background:var(--s2);cursor:pointer;font-size:14px;transition:all .13s;display:flex;gap:11px;align-items:flex-start}
+.qo:hover:not(.answered){border-color:var(--ac);background:var(--ad)}
+.qo.correct{border-color:var(--ok);background:var(--od)}
+.qo.wrong{border-color:var(--er);background:var(--ed)}
+.qo.answered{cursor:default}
+.ql{width:24px;height:24px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.qo.correct .ql{background:var(--ok);color:#fff}.qo.wrong .ql{background:var(--er);color:#fff}
+.qfb{margin-top:18px;padding:14px 16px;border-radius:9px;font-size:14px;line-height:1.5}
+.qfb.ok{background:var(--od);border:1px solid rgba(34,197,94,.3)}.qfb.err{background:var(--ed);border:1px solid rgba(239,68,68,.3)}
+.qscore{text-align:center;padding:28px}
+.qscore .snum{font-size:60px;font-weight:800;line-height:1}
+.qscore .slbl{font-size:17px;color:var(--m);margin-top:5px}
+.qscore .smsg{margin:18px auto;max-width:340px;font-size:14px;color:var(--m);line-height:1.5}
+/* Notes */
+.ntabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px}
+.ntab{padding:6px 13px;border-radius:99px;background:var(--s1);border:1px solid var(--s3);cursor:pointer;font-size:13px;transition:all .13s}
+.ntab:hover{border-color:var(--ac)}
+.ntab.on{background:var(--ac);border-color:var(--ac);color:#fff}
+.ned{background:var(--s1);border:1px solid var(--s3);border-radius:var(--r);overflow:hidden}
+.ntbar{padding:9px 14px;border-bottom:1px solid var(--s3);display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--m)}
+textarea.nta{width:100%;padding:14px;background:transparent;border:none;color:var(--t);font-family:inherit;font-size:14px;line-height:1.65;resize:vertical;min-height:280px;outline:none}
+textarea.nta::placeholder{color:var(--s3)}
+/* Help */
+.hgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.hcard{background:var(--s1);border:1px solid var(--s3);border-radius:var(--r);padding:18px}
+.hcard h3{font-size:14px;font-weight:700;margin-bottom:7px;display:flex;align-items:center;gap:7px}
+.hcard p{font-size:13px;color:var(--m);line-height:1.5;margin-bottom:13px}
+.upzone{border:2px dashed var(--s3);border-radius:8px;padding:22px;text-align:center;cursor:pointer;transition:all .2s}
+.upzone:hover{border-color:var(--ac);background:var(--ad)}
+.upzone-icon{font-size:26px;margin-bottom:7px}
+.upzone-label{font-size:14px;font-weight:600}
+.upzone-sub{font-size:12px;color:var(--m);margin-top:3px}
+#upload-preview{width:100%;border-radius:8px;margin-top:10px;display:none}
+.fg{margin-bottom:12px}
+.fl{display:block;font-size:11px;font-weight:700;color:var(--m);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em}
+.fi,.fsel,.fta{width:100%;background:var(--s2);border:1px solid var(--s3);border-radius:8px;padding:9px 11px;color:var(--t);font-family:inherit;font-size:14px;outline:none;transition:border .13s}
+.fi:focus,.fsel:focus,.fta:focus{border-color:var(--ac)}
+.fta{resize:vertical;min-height:75px}
+/* Teach mode */
+.tfab{position:fixed;bottom:22px;right:22px;width:52px;height:52px;border-radius:50%;background:var(--ac);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:21px;box-shadow:0 4px 20px rgba(14,165,233,.4);transition:all .2s;z-index:100}
+.tfab:hover{transform:scale(1.08)}
+.tpanel{position:fixed;right:0;top:0;bottom:0;width:370px;background:var(--s1);border-left:1px solid var(--s3);transform:translateX(100%);transition:transform .3s;z-index:200;display:flex;flex-direction:column}
+.tpanel.open{transform:translateX(0)}
+.tph{padding:18px;border-bottom:1px solid var(--s3);display:flex;align-items:center;justify-content:space-between}
+.tph h2{font-size:15px;font-weight:700;display:flex;align-items:center;gap:7px}
+.cbtn{width:30px;height:30px;border-radius:7px;background:none;border:1px solid var(--s3);cursor:pointer;color:var(--t);font-size:17px;display:flex;align-items:center;justify-content:center}
+.tsearch{padding:12px 18px;border-bottom:1px solid var(--s3)}
+.tsearch input{width:100%;background:var(--s2);border:1px solid var(--s3);border-radius:8px;padding:8px 11px;color:var(--t);font-family:inherit;font-size:14px;outline:none}
+.tsearch input:focus{border-color:var(--ac)}
+.tresults{flex:1;overflow-y:auto;padding:12px 18px}
+.faqi{border-bottom:1px solid var(--s2);padding:13px 0;cursor:pointer}
+.faqi:last-child{border-bottom:none}
+.faqq{font-size:14px;font-weight:500;display:flex;justify-content:space-between;gap:8px}
+.faqtog{color:var(--m);flex-shrink:0;transition:transform .2s;font-size:12px}
+.faqa{font-size:13px;color:var(--m);line-height:1.6;margin-top:9px;padding-top:9px;border-top:1px solid var(--s2);display:none}
+.faqi.open .faqa{display:block}
+.faqi.open .faqtog{transform:rotate(180deg)}
+.tip-box{background:var(--wd);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:12px;margin-bottom:12px;font-size:13px;line-height:1.5}
+.tip-box strong{display:block;margin-bottom:3px;color:var(--wn)}
+/* Quick Reference */
+.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.rcard{background:var(--s1);border:1px solid var(--s3);border-radius:var(--r);padding:18px}
+.rcard h3{font-size:13px;font-weight:800;color:var(--ac);margin-bottom:11px;display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:.05em}
+.rlist{list-style:none}
+.rlist li{font-size:12px;padding:4px 0;border-bottom:1px solid var(--s2);line-height:1.4;display:flex;gap:6px;align-items:flex-start}
+.rlist li:last-child{border-bottom:none}
+.rlist li::before{content:"→";color:var(--ac);flex-shrink:0;margin-top:1px}
+.rlist li strong{color:var(--t)}
+/* Sign-off */
+.soform{background:var(--s1);border:1px solid var(--s3);border-radius:14px;padding:24px}
+.sotable{width:100%;border-collapse:collapse;margin-bottom:16px}
+.sotable th{text-align:left;padding:9px 13px;font-size:11px;font-weight:700;color:var(--m);border-bottom:1px solid var(--s3);text-transform:uppercase;letter-spacing:.06em}
+.sotable td{padding:12px 13px;border-bottom:1px solid rgba(51,65,85,.4);font-size:14px;vertical-align:middle}
+.sotable tr:last-child td{border-bottom:none}
+.socheck{display:flex;gap:16px}
+.socheck label{display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer}
+.socheck input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--ok)}
+.sofield{margin-bottom:12px}
+/* Overlay */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:190}
+.overlay.on{display:block}
+/* Login screen */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--bg)}
+.login-box{width:100%;max-width:420px;background:var(--s1);border:1px solid var(--s3);border-radius:16px;padding:32px}
+.login-logo{font-size:40px;text-align:center;margin-bottom:12px}
+.login-title{font-size:22px;font-weight:800;text-align:center;margin-bottom:4px}
+.login-sub{font-size:14px;color:var(--m);text-align:center;margin-bottom:28px}
+.user-list{display:flex;flex-direction:column;gap:9px;margin-bottom:18px}
+.user-btn{display:flex;align-items:center;gap:13px;padding:13px 15px;border-radius:10px;background:var(--s2);border:1px solid var(--s3);cursor:pointer;text-align:left;color:var(--t);font-family:inherit;transition:all .15s;width:100%}
+.user-btn:hover{border-color:var(--ac);background:var(--ad)}
+.user-av{width:38px;height:38px;border-radius:50%;background:var(--ac);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;flex-shrink:0;color:#fff}
+.user-info{}
+.user-name{font-size:14px;font-weight:700;margin-bottom:1px}
+.user-meta{font-size:12px;color:var(--m)}
+.login-div{display:flex;align-items:center;gap:10px;margin-bottom:18px;color:var(--m);font-size:12px}
+.login-div::before,.login-div::after{content:'';flex:1;height:1px;background:var(--s3)}
+.new-user-form{display:none}
+.new-user-form.on{display:block}
+/* Pin modal */
+.pin-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:center;justify-content:center}
+.pin-modal.on{display:flex}
+.pin-box{background:var(--s1);border:1px solid var(--s3);border-radius:14px;padding:28px;width:320px;text-align:center}
+.pin-box h3{font-size:16px;font-weight:700;margin-bottom:5px}
+.pin-box p{font-size:13px;color:var(--m);margin-bottom:18px}
+.pin-dots{display:flex;gap:9px;justify-content:center;margin-bottom:18px}
+.pd{width:14px;height:14px;border-radius:50%;background:var(--s3);transition:background .15s}
+.pd.on{background:var(--ac)}
+.pin-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pk{padding:14px;border-radius:9px;background:var(--s2);border:1px solid var(--s3);cursor:pointer;font-size:17px;font-weight:700;font-family:inherit;color:var(--t);transition:all .13s}
+.pk:hover{background:var(--ad);border-color:var(--ac)}
+.pk.clr{color:var(--er);font-size:14px}
+.pin-err{color:var(--er);font-size:13px;min-height:18px;margin-top:4px}
+/* User chip in sidebar */
+.sb-user{display:flex;align-items:center;gap:9px;padding:10px 12px;background:var(--s2);border-radius:9px;margin:10px 10px 0;cursor:pointer;border:1px solid var(--s3);transition:all .13s}
+.sb-user:hover{border-color:var(--ac)}
+.sb-uav{width:28px;height:28px;border-radius:50%;background:var(--ac);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
+.sb-uname{flex:1;font-size:13px;font-weight:600}
+.sb-uswitch{font-size:11px;color:var(--m)}
+/* Mobile */
+.hbg{display:none;position:fixed;top:12px;left:12px;z-index:150;padding:7px 9px;background:var(--s1);border:1px solid var(--s3);border-radius:8px;cursor:pointer;font-size:19px;line-height:1}
+@keyframes pop{0%{transform:scale(.8);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+.pop{animation:pop .3s ease}
+@media(max-width:768px){
+  .hbg{display:block}
+  #sb{position:fixed;left:-100%;top:0;bottom:0;z-index:160;transition:left .3s}
+  #sb.open{left:0}
+  .view{padding:16px;padding-top:56px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .lgrid{grid-template-columns:1fr}
+  .hgrid{grid-template-columns:1fr}
+  .rgrid{grid-template-columns:1fr}
+  .cgrid{grid-template-columns:1fr}
+  .mvis{grid-template-columns:repeat(2,1fr)}
+  .tpanel{width:100%}
+  .mdemo{grid-template-columns:1fr 1fr}
+}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:99px}
+/* Firebase login form */
+.auth-tabs{display:flex;gap:0;margin-bottom:18px;border-radius:8px;overflow:hidden;border:1px solid var(--s3)}
+.auth-tab{flex:1;padding:9px;text-align:center;font-size:13px;font-weight:600;cursor:pointer;background:var(--s2);color:var(--m);border:none;transition:all .2s}
+.auth-tab.on{background:var(--ac);color:#fff}
+.auth-status{font-size:12px;margin-top:8px;min-height:16px;text-align:center}
+/* Chat */
+.chat-wrap{display:flex;flex-direction:column;height:400px;border:1px solid var(--s3);border-radius:var(--r);overflow:hidden;background:var(--s1)}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.chat-msg{max-width:80%;padding:9px 12px;border-radius:12px;font-size:13px;line-height:1.45}
+.chat-msg.mine{align-self:flex-end;background:var(--ac);color:#fff;border-bottom-right-radius:4px}
+.chat-msg.theirs{align-self:flex-start;background:var(--s2);border-bottom-left-radius:4px}
+.chat-msg.instructor{align-self:flex-start;background:var(--od);border:1px solid var(--ok);border-bottom-left-radius:4px}
+.chat-name{font-size:10px;font-weight:700;opacity:.7;margin-bottom:3px}
+.chat-img{max-width:200px;max-height:160px;border-radius:8px;margin-top:6px;display:block}
+.chat-time{font-size:10px;opacity:.5;margin-top:3px}
+.chat-bar{display:flex;gap:8px;padding:10px;border-top:1px solid var(--s3);background:var(--s2)}
+.chat-input{flex:1;background:var(--s1);border:1px solid var(--s3);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--t);resize:none;min-height:40px;max-height:100px;font-family:inherit}
+.chat-input:focus{outline:none;border-color:var(--ac)}
+.chat-actions{display:flex;gap:6px;align-items:flex-end}
+.chat-btn{width:38px;height:38px;border:none;border-radius:8px;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.chat-send{background:var(--ac);color:#fff}
+.chat-cam{background:var(--s3);color:var(--t)}
+.chat-empty{text-align:center;padding:40px 20px;color:var(--m);font-size:13px}
+.cam-preview{width:100%;max-height:200px;background:#000;border-radius:8px;display:none;margin-bottom:10px}
+.cam-controls{display:flex;gap:8px;margin-bottom:10px}
+/* Instructor panel */
+.inst-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.inst-tab{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:var(--s2);border:1px solid var(--s3);color:var(--m)}
+.inst-tab.on{background:var(--ad);border-color:var(--ac);color:var(--ac)}
+/* Loading state */
+.loading-spin{display:inline-block;width:18px;height:18px;border:2px solid var(--s3);border-top-color:var(--ac);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="v-login-screen" class="login-wrap">
+  <div class="login-box">
+    <div class="login-logo">🎚️</div>
+    <div class="login-title">X32 Training Hub</div>
+    <div class="login-sub" id="login-sub">Sign in to sync your progress across devices</div>
+    <!-- Firebase auth form -->
+    <div id="auth-form">
+      <div class="auth-tabs">
+        <button class="auth-tab on" id="tab-signin" onclick="switchAuthTab('signin')">Sign In</button>
+        <button class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')">Create Account</button>
+      </div>
+      <div class="fg"><label class="fl">Email</label><input class="fi" id="auth-email" type="email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')document.getElementById('auth-pass').focus()"></div>
+      <div class="fg"><label class="fl">Password</label><input class="fi" id="auth-pass" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')doAuth()"></div>
+      <div id="auth-name-row" class="fg" style="display:none"><label class="fl">Your Name</label><input class="fi" id="auth-name" placeholder="e.g. James Williams"></div>
+      <div class="brow" style="margin-top:10px;">
+        <button class="btn btn-p" id="auth-btn" style="flex:1;justify-content:center;" onclick="doAuth()">Sign In →</button>
+      </div>
+      <div id="auth-status" class="auth-status"></div>
+      <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--m)"><a href="#" onclick="doResetPassword();return false" style="color:var(--ac)">Forgot password?</a></div>
+    </div>
+    <!-- Offline fallback (when Firebase not configured) -->
+    <div id="offline-form" style="display:none">
+      <div class="fg"><label class="fl">Your Name</label><input class="fi" id="nu-name" placeholder="e.g. James Williams" onkeydown="if(event.key==='Enter')createOfflineUser()"></div>
+      <div class="fg"><label class="fl">4-digit PIN (optional)</label><input class="fi" id="nu-pin" type="number" placeholder="Leave blank for no PIN" maxlength="4" oninput="this.value=this.value.slice(0,4)"></div>
+      <div class="brow">
+        <button class="btn btn-p" style="flex:1;justify-content:center;" onclick="createOfflineUser()">Continue →</button>
+      </div>
+      <div id="nu-err" style="color:var(--er);font-size:13px;margin-top:8px;min-height:16px;"></div>
+      <div id="offline-users" style="margin-top:14px;"></div>
+    </div>
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--s3);text-align:center;font-size:12px;color:var(--m);">
+      <span style="color:var(--ac);">Productions by Tubb LLC · 478-442-2835 · productionsbytubb.com</span>
+    </div>
+  </div>
+</div>
+
+<!-- PIN MODAL -->
+<div class="pin-modal" id="pin-modal">
+  <div class="pin-box">
+    <h3 id="pin-title">Enter PIN</h3>
+    <p id="pin-sub">for <span id="pin-name"></span></p>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pd" id="pd0"></div><div class="pd" id="pd1"></div>
+      <div class="pd" id="pd2"></div><div class="pd" id="pd3"></div>
+    </div>
+    <div class="pin-keys">
+      <button class="pk" onclick="pinKey('1')">1</button><button class="pk" onclick="pinKey('2')">2</button><button class="pk" onclick="pinKey('3')">3</button>
+      <button class="pk" onclick="pinKey('4')">4</button><button class="pk" onclick="pinKey('5')">5</button><button class="pk" onclick="pinKey('6')">6</button>
+      <button class="pk" onclick="pinKey('7')">7</button><button class="pk" onclick="pinKey('8')">8</button><button class="pk" onclick="pinKey('9')">9</button>
+      <button class="pk clr" onclick="pinCancel()">✕ Cancel</button><button class="pk" onclick="pinKey('0')">0</button><button class="pk clr" onclick="pinBack()">⌫</button>
+    </div>
+    <div class="pin-err" id="pin-err"></div>
+  </div>
+</div>
+
+<button class="hbg" onclick="toggleSb()">☰</button>
+<div class="overlay" id="ov" onclick="closeOv()"></div>
+
+<div id="shell" style="display:none">
+<!-- SIDEBAR -->
+<nav id="sb">
+  <div class="sb-top">
+    <div class="sb-brand">
+      <div class="sb-icon">🎚️</div>
+      <div>
+        <div class="sb-name">X32 Training Hub</div>
+        <div class="sb-sub">Volunteer Certification</div>
+      </div>
+    </div>
+    <div class="sb-prog">
+      <div class="sb-plabel"><span id="sb-txt">0 of 8 lessons</span><span id="sb-pct">0%</span></div>
+      <div class="sb-pbar"><div class="sb-pfill" id="sb-fill" style="width:0%"></div></div>
+    </div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-seclabel">Lessons</div>
+    <div id="lessnav"></div>
+  </div>
+  <div id="sb-user-chip"></div>
+  <div class="sb-sec" style="margin-top:auto;border-top:1px solid var(--s3);padding-top:12px;">
+    <div class="sb-seclabel">Tools</div>
+    <button class="ni" onclick="go('notes')"><span class="ni-icon">📝</span><span class="ni-label">My Notes</span></button>
+    <button class="ni" onclick="go('help')"><span class="ni-icon">💬</span><span class="ni-label">Live Help Chat</span></button>
+    <button class="ni" onclick="go('reference')"><span class="ni-icon">📋</span><span class="ni-label">Quick Reference</span></button>
+    <button class="ni" onclick="go('signoff')"><span class="ni-icon">✅</span><span class="ni-label">Sign-Off Sheet</span></button>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main id="main">
+
+<!-- HOME -->
+<div id="v-home" class="view on">
+  <div class="hero">
+    <h2>Welcome to X32 Training 🎚️</h2>
+    <p>Everything you need to run Sunday service on the Behringer X32. Complete all 8 lessons, pass the quizzes, and get your volunteer sign-off.</p>
+    <div class="hero-quote">"When sound is done well, nobody notices." — The goal of every service.</div>
+    <div class="brow">
+      <button class="btn btn-p btn-lg" onclick="continueL()" id="continue-btn">▶ Start Lesson 1</button>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="sc a"><div class="sc-val" id="st-l">0/8</div><div class="sc-lbl">Lessons Done</div></div>
+    <div class="sc g"><div class="sc-val" id="st-q">0/8</div><div class="sc-lbl">Quizzes Passed</div></div>
+    <div class="sc w"><div class="sc-val" id="st-a">—</div><div class="sc-lbl">Avg Score</div></div>
+    <div class="sc"><div class="sc-val" id="st-n">0</div><div class="sc-lbl">Notes Saved</div></div>
+  </div>
+  <div class="stitle">All Lessons</div>
+  <div class="lgrid" id="dash-grid"></div>
+</div>
+
+<!-- LESSON -->
+<div id="v-lesson" class="view">
+  <div id="lesson-body"></div>
+</div>
+
+<!-- QUIZ -->
+<div id="v-quiz" class="view">
+  <div class="bc"><a onclick="go('home')">Home</a> › <span id="qbc">Quiz</span></div>
+  <h2 style="font-size:20px;font-weight:700;margin-bottom:20px;" id="qtitle">Quiz</h2>
+  <div class="cs" id="quiz-wrap"></div>
+</div>
+
+<!-- NOTES -->
+<div id="v-notes" class="view">
+  <div class="ph"><h2>My Notes 📝</h2><p>Notes save automatically to your browser. Pick a lesson below.</p></div>
+  <div class="ntabs" id="ntabs"></div>
+  <div class="ned">
+    <div class="ntbar"><span id="ntlabel">Select a lesson</span><button class="btn btn-p btn-sm" onclick="saveNote()">💾 Save</button></div>
+    <textarea class="nta" id="nta" placeholder="Type your notes here…" disabled></textarea>
+  </div>
+  <div style="margin-top:12px;font-size:12px;color:var(--m);">💡 Notes are stored in your browser. Use this to capture key things during hands-on practice.</div>
+</div>
+
+<!-- HELP -->
+<div id="v-help" class="view">
+  <div class="ph"><h2 id="help-title">Live Help Chat 💬</h2><p id="help-sub">Ask your instructor a question. Attach a photo or use your camera.</p></div>
+  <!-- Instructor: user selector tabs -->
+  <div id="inst-panel" style="display:none">
+    <div style="background:var(--od);border:1px solid var(--ok);border-radius:var(--r);padding:12px 16px;margin-bottom:14px;font-size:13px;">
+      <strong>👩‍🏫 Instructor View</strong> — You can see all volunteer help chats below.
+    </div>
+    <div class="inst-tabs" id="inst-tabs"></div>
+  </div>
+  <!-- Camera strip (shown when camera is active) -->
+  <div id="cam-strip" style="display:none;margin-bottom:14px;">
+    <video id="cam-video" class="cam-preview" autoplay playsinline muted></video>
+    <div class="cam-controls">
+      <button class="btn btn-p btn-sm" onclick="snapPhoto()">📸 Snap Photo</button>
+      <button class="btn btn-o btn-sm" onclick="stopCamera()">✕ Stop Camera</button>
+    </div>
+    <canvas id="cam-canvas" style="display:none"></canvas>
+  </div>
+  <!-- Staged image preview (before send) -->
+  <div id="staged-wrap" style="display:none;margin-bottom:12px;">
+    <div style="font-size:12px;color:var(--m);margin-bottom:6px;">📎 Photo attached (will send with next message)</div>
+    <img id="staged-img" style="max-height:120px;border-radius:8px;display:block;">
+    <button class="btn btn-o btn-sm" style="margin-top:6px;" onclick="clearStaged()">✕ Remove</button>
+  </div>
+  <!-- Chat window -->
+  <div class="chat-wrap">
+    <div class="chat-msgs" id="chat-msgs">
+      <div class="chat-empty" id="chat-empty">No messages yet. Send your first question below! 👋</div>
+    </div>
+    <div class="chat-bar">
+      <textarea class="chat-input" id="chat-input" placeholder="Type your question…" rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg();}"></textarea>
+      <div class="chat-actions">
+        <button class="chat-btn chat-cam" onclick="openCamera()" title="Use camera">📷</button>
+        <label class="chat-btn chat-cam" title="Upload photo" style="cursor:pointer">
+          📎<input type="file" accept="image/*" style="display:none" onchange="stageFile(this)">
+        </label>
+        <button class="chat-btn chat-send" onclick="sendChatMsg()" title="Send">➤</button>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:10px;font-size:12px;color:var(--m);">
+    💡 Camera and photo upload require the app to be hosted on HTTPS (e.g. Firebase Hosting). Progress is saved to the cloud when signed in.
+  </div>
+  <div class="hcard" style="margin-top:18px;">
+    <h3>📞 Direct Contact</h3>
+    <div style="background:var(--s2);border-radius:8px;padding:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div>
+          <div style="font-size:11px;color:var(--m);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Training Provider</div>
+          <div style="font-size:13px;font-weight:600;">Productions by Tubb LLC</div>
+          <div style="font-size:13px;color:var(--ac);">478-442-2835</div>
+          <div style="font-size:12px;color:var(--m);">productionsbytubb.com</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--m);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Your Sound Lead</div>
+          <div style="font-size:14px;font-weight:600;">___________________</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- QUICK REFERENCE -->
+<div id="v-reference" class="view">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+    <div class="ph" style="margin:0;"><h2>Quick Reference Card 📋</h2><p>Keep this open at the console during service.</p></div>
+    <button class="btn btn-o btn-sm" onclick="copyRef()">📋 Copy Card</button>
+  </div>
+  <div class="rgrid">
+    <div class="rcard">
+      <h3>🟢 Start of Sunday</h3>
+      <ul class="rlist">
+        <li>Console &amp; stage boxes on — wait to fully boot</li>
+        <li>Wireless receivers &amp; computers on</li>
+        <li>Mains down, then speakers on LAST</li>
+        <li>Recall the Sunday scene</li>
+        <li>Line check every mic</li>
+        <li>Mute anything not used yet</li>
+      </ul>
+    </div>
+    <div class="rcard">
+      <h3>🔑 The Four Buttons</h3>
+      <ul class="rlist">
+        <li><strong>SELECT</strong> — picks the channel to work on</li>
+        <li><strong>MUTE lit (red)</strong> — channel is OFF, no sound</li>
+        <li><strong>SOLO</strong> — listen in headphones only</li>
+        <li>Fader near 0 — adjust by ear during service</li>
+        <li>Wrong channels? Check the layer buttons</li>
+        <li>Monitors? Sends on Fader, then exit it</li>
+      </ul>
+    </div>
+    <div class="rcard">
+      <h3>📊 Setting Gain</h3>
+      <ul class="rlist">
+        <li>SELECT channel → press SOLO → put on headphones</li>
+        <li>Have them talk/sing at real service volume</li>
+        <li>Green + touch of yellow = just right ✅</li>
+        <li>Hitting red → turn gain DOWN</li>
+        <li>Turn on Low Cut for all voice mics</li>
+        <li>Fader near 0, adjust by ear</li>
+      </ul>
+    </div>
+    <div class="rcard">
+      <h3>⚠️ Feedback or Problem</h3>
+      <ul class="rlist">
+        <li>Pull down the RINGING mic's fader first</li>
+        <li>Mute unused open mics</li>
+        <li>Don't grab the main LR fader first</li>
+        <li>No sound → mic on? mute off? fader up? right layer?</li>
+        <li>Fader does nothing → wrong layer or Sends on Fader lit</li>
+        <li>Stay calm — mute it, then call for help</li>
+      </ul>
+    </div>
+    <div class="rcard">
+      <h3>🔴 End of Sunday</h3>
+      <ul class="rlist">
+        <li>Mute mics, bring main LR fader down</li>
+        <li>Speakers &amp; amps off FIRST</li>
+        <li>Wireless off, batteries out or charging</li>
+        <li>Stop recording &amp; remove USB drive</li>
+        <li>Console off LAST</li>
+        <li>Note any problems for sound lead</li>
+      </ul>
+    </div>
+    <div class="rcard">
+      <h3>🚫 Never During Service</h3>
+      <ul class="rlist">
+        <li>Don't save over the Sunday scene</li>
+        <li>Don't change routing or Setup screens</li>
+        <li>Don't change gain without sound lead OK</li>
+        <li>Don't leave Sends on Fader lit</li>
+        <li>Don't leave unused mics open</li>
+        <li>Livestream problem → tell sound lead, don't fix routing</li>
+      </ul>
+    </div>
+  </div>
+  <div id="ref-copied" style="display:none;margin-top:12px;" class="ca ca-g"><div class="ca-icon">✅</div><div class="ca-txt">Reference card copied to clipboard! Paste it anywhere.</div></div>
+</div>
+
+<!-- SIGN-OFF -->
+<div id="v-signoff" class="view">
+  <div class="ph"><h2>Volunteer Sign-Off Sheet ✅</h2><p>Complete this with your instructor after the hands-on practice service.</p></div>
+  <div class="soform">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
+      <div class="sofield"><label class="fl">Volunteer Name</label><input class="fi" id="so-name" placeholder="Full name"></div>
+      <div class="sofield"><label class="fl">Instructor</label><input class="fi" id="so-inst" placeholder="Sound lead / instructor"></div>
+      <div class="sofield"><label class="fl">Date</label><input class="fi" type="date" id="so-date"></div>
+    </div>
+    <table class="sotable">
+      <thead><tr><th>Skill</th><th>Ready ✅</th><th>Needs Practice 🔄</th></tr></thead>
+      <tbody id="so-rows"></tbody>
+    </table>
+    <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="so-notes" placeholder="Any areas to revisit, general observations…"></textarea></div>
+    <div class="brow">
+      <button class="btn btn-p" onclick="copySo()">📋 Copy Sign-Off</button>
+    </div>
+    <div id="so-copied" style="display:none;margin-top:10px;" class="ca ca-g"><div class="ca-icon">✅</div><div class="ca-txt">Sign-off sheet copied! Paste it into an email or document.</div></div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- TEACH FAB -->
+<button class="tfab" onclick="toggleTeach()" title="Teach Mode — Ask a question">🎓</button>
+
+<!-- TEACH PANEL -->
+<div id="tpanel" class="tpanel">
+  <div class="tph">
+    <h2>🎓 Teach Mode</h2>
+    <button class="cbtn" onclick="toggleTeach()">✕</button>
+  </div>
+  <div class="tsearch"><input type="text" id="teach-q" placeholder="Ask anything… e.g. what is gain?" oninput="filterFaq(this.value)"></div>
+  <div class="tresults" id="faqlist"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// LESSON DATA
+// ═══════════════════════════════════════════
+const L=[
+  {id:1,title:"Welcome & Golden Rules",dur:"10 min",icon:"🎯",
+   summary:"Foundational rules and vocabulary that keep every service safe.",
+   sec:[
+    {t:"quote",c:'"When sound is done well, nobody notices." Our job is to help the congregation hear the message and music clearly. Nothing you do today can break this console if you follow the rules.'},
+    {t:"rules",h:"The Seven Golden Rules",
+     items:[
+      {r:"Recall, don't save",d:"Load the Sunday scene every week. Never save over it unless the sound lead asks."},
+      {r:"Fix the channel, not the master",d:"If one mic is too loud or feeding back, pull that channel's fader — not the main LR."},
+      {r:"Gain is set at sound check",d:"Once service starts, use faders to adjust volume. Only change gain if the sound lead says so."},
+      {r:"Stay off the setup screens",d:"No changes to routing, output, or Setup menus during service."},
+      {r:"Mute what isn't used",d:"An open mic with nobody talking picks up noise and causes feedback."},
+      {r:"Watch and listen",d:"Eyes on the stage, ears on the room. Be ready before someone speaks."},
+      {r:"Stay calm and ask",d:"Mute the problem, take a breath, then call the sound lead. Don't guess."},
+     ]},
+    {t:"terms",h:"Seven Words to Know",
+     items:[
+      {term:"Channel",def:"One input — like one mic or instrument — with its own fader."},
+      {term:"Gain",def:"How much the console boosts the mic signal coming in. Set once at sound check."},
+      {term:"Fader",def:"The slider that sets how loud a channel is in the room."},
+      {term:"Mute",def:"Silences a channel. A lit (red) MUTE button means the channel is OFF."},
+      {term:"Mix / Monitor",def:"A separate blend sent to stage speakers or in-ear monitors."},
+      {term:"Scene",def:"A saved snapshot of the whole console. The X32 holds up to 100."},
+      {term:"Feedback",def:"The squeal when a mic picks up a speaker. Pull that channel's fader down quickly."},
+     ]},
+   ]},
+  {id:2,title:"Tour of the Console",dur:"15 min",icon:"🗺️",
+   summary:"Know where everything is before you touch anything.",
+   sec:[
+    {t:"steps",h:"Eight Zones of the X32",
+     items:[
+      {title:"Channel strip section",desc:"Gain, low cut, EQ, and monitor sends for the selected channel — top left."},
+      {title:"Screen & knobs",desc:"The color screen shows what section is selected; knobs below it change the values."},
+      {title:"Scenes & USB",desc:"Load the Sunday scene here and plug in a flash drive to record."},
+      {title:"Layer buttons",desc:"Choose which 16 channels the faders control. For Sunday, keep CH 1-16 lit."},
+      {title:"Channel strips",desc:"Each strip has SELECT, SOLO, MUTE buttons and a motorized fader."},
+      {title:"Sends on Fader button",desc:"Turns faders into monitor mix controls when lit. Always exit when done."},
+      {title:"Bus / DCA faders",desc:"Far-right faders. Control monitor mixes and channel groups."},
+      {title:"Main LR fader",desc:"Tallest fader on the right — sets overall volume to the main speakers."},
+     ]},
+    {t:"callout-i",c:"Four things every volunteer must know: SELECT picks the channel. MUTE (lit red) = channel is OFF. SOLO listens in headphones. FADER sets the room volume. Know these four and you can run a service."},
+    {t:"mute"},
+    {t:"callout-w",c:"Wrong faders? Check the LAYER buttons. The faders follow whatever layer is lit. For Sunday service, CH 1-16 must always be your active layer."},
+   ]},
+  {id:3,title:"Power On & Loading",dur:"10 min",icon:"🔌",
+   summary:"The correct startup sequence and how to load the Sunday scene.",
+   sec:[
+    {t:"callout-i",c:"Always turn on from SOURCE to SPEAKERS — speakers on LAST. This prevents the loud pop that damages speakers."},
+    {t:"steps",h:"Power-On Steps",
+     items:[
+      {title:"Console & stage boxes first",desc:"Press power and wait for the X32 to fully boot — faders will motor to default."},
+      {title:"Wireless receivers & computers",desc:"Turn on mic receivers, playback, and livestream computers."},
+      {title:"Bring mains down",desc:"Pull the Main LR fader all the way down or mute mains."},
+      {title:"Speakers and amps LAST",desc:"Turn on powered speakers and amplifiers. You'll hear nothing — good."},
+     ]},
+    {t:"callout-g",c:"Power OFF is the exact reverse: SPEAKERS off first, console off last. This protects your gear every single time."},
+    {t:"steps",h:"Loading the Sunday Scene",
+     items:[
+      {title:"Press VIEW in the Scenes section",desc:"The screen shows all saved scenes."},
+      {title:"Find your Sunday scene",desc:"Your sound lead will give you the scene number or name (fill it in here: ___)."},
+      {title:"Press Go and confirm",desc:"Faders will motor to their saved positions. Watch them move — that's normal."},
+      {title:"Verify channel names",desc:"Each fader label should match what's plugged in. If anything looks wrong, tell the sound lead."},
+     ]},
+    {t:"rules",h:"Line Check Before Service",
+     items:[
+      {r:"Wireless mics on",d:"Check batteries are ≥50% charged. Fresh batteries every Sunday if possible."},
+      {r:"Test each mic",d:"Speak into one mic at a time. Watch the meter and listen in the room."},
+      {r:"Walk-in music",d:"Start background music at a low level as people arrive."},
+      {r:"Test stage monitors",d:"Confirm each wedge or in-ear is working and playing the right mix."},
+      {r:"Mute unused channels",d:"Start clean — only unmute channels as they're needed."},
+     ]},
+   ]},
+  {id:4,title:"Gain & Levels",dur:"20 min",icon:"📊",
+   summary:"The most important skill: setting gain correctly and reading the meters.",
+   sec:[
+    {t:"compare",h:"Gain vs. Fader",
+     a:{title:"GAIN",items:["Set ONCE at sound check","Boosts the mic signal into the console","Only change with sound lead OK","Knob at top-left of channel strip"]},
+     b:{title:"FADER",items:["Used ALL through the service","Controls how loud the channel is in the room","Small, smooth moves","Start near the 0 mark"]},
+    },
+    {t:"steps",h:"Setting Gain — 7 Steps",
+     items:[
+      {title:"Press SELECT on the channel",desc:"The channel strip section now shows that channel's settings."},
+      {title:"Press SOLO, put on headphones",desc:"You'll hear only that channel — perfect for checking level in isolation."},
+      {title:"Have them perform at real service level",desc:"Singer sings at Sunday volume, speaker speaks at sermon volume."},
+      {title:"Turn GAIN until meter is green, touching yellow",desc:"Slow turns. Peaks just barely touching yellow on the loudest moments."},
+      {title:"Hitting red? Turn gain down",desc:"Red = distortion (clipping). Bring gain down until peaks return to green-yellow."},
+      {title:"Turn on Low Cut for voice mics",desc:"Press the Low Cut (HPF) button in the channel strip to filter out rumble."},
+      {title:"Press SOLO off, set fader near 0",desc:"Exit solo, bring fader to 0 mark, then adjust by ear in the room."},
+     ]},
+    {t:"meter"},
+   ]},
+  {id:5,title:"Mixing the Service",dur:"20 min",icon:"🎵",
+   summary:"Follow the service flow — know what to unmute, lower, and when.",
+   sec:[
+    {t:"steps",h:"Service Flow",
+     items:[
+      {title:"Walk-in",desc:"Playback music on low. All mics muted. Create a welcoming atmosphere."},
+      {title:"Welcome / Announcements",desc:"Unmute the speaker's mic BEFORE they step up. Lower the music. Keep other mics muted."},
+      {title:"Worship",desc:"Bring up band and vocals. Lead vocal should sit clearly on top of the mix."},
+      {title:"Prayer & Offering",desc:"Bring band down. Keep one mic live for the leader. Mute instruments that stopped."},
+      {title:"Sermon",desc:"Pastor mic is the PRIORITY. Mute everything else not in use. Full focus on speech clarity."},
+      {title:"Closing",desc:"Unmute closing speakers/musicians. Bring walk-out music back in gradually after dismissal."},
+     ]},
+    {t:"callout-g",c:"Good habit: Unmute a mic just before someone speaks. Make small, smooth fader moves. Mute mics immediately when done. Clean in, clean out."},
+    {t:"steps",h:"When You Hear Feedback",
+     items:[
+      {title:"Pull the ringing mic's fader down quickly",desc:"Not all the way — just enough to stop the ring. Find the culprit and pull it."},
+      {title:"Can't find it? Mute unused mics",desc:"Mute any mic not actively in use. Feedback almost always comes from an open, unused mic."},
+      {title:"Don't touch the main LR fader",desc:"Pulling main LR kills all sound. That's usually worse than a moment of feedback."},
+      {title:"Tell the sound lead after service",desc:"Feedback signals a gain or EQ issue worth fixing before next Sunday."},
+     ]},
+   ]},
+  {id:6,title:"Stage Monitors",dur:"15 min",icon:"🔈",
+   summary:"Learn Sends on Fader mode and how to respond to monitor requests.",
+   sec:[
+    {t:"callout-i",c:"Stage monitors (wedges or in-ears) are completely separate from the main room mix. You can adjust someone's monitor without changing what the congregation hears."},
+    {t:"steps",h:"Using Sends on Fader",
+     items:[
+      {title:"Press Sends on Fader button",desc:"It lights up. Left faders now control monitor sends, NOT the main room mix."},
+      {title:"Press SELECT on the monitor bus",desc:"On the right side, select which monitor mix you're adjusting (Bus 1, 2, etc.)."},
+      {title:"Adjust the left faders",desc:"Each channel's fader now = how loud that source is in the selected monitor. Small moves."},
+      {title:"Press Sends on Fader again to EXIT",desc:"Light goes off. Faders go back to room mix. ALWAYS exit when done."},
+     ]},
+    {t:"callout-w",c:"⚠️ CRITICAL: If Sends on Fader is still lit and you think you're mixing the room, you're secretly changing someone's monitor. ALWAYS check that the button is off before mixing."},
+    {t:"mreqs",h:"Monitor Requests — Translations",
+     items:[
+      {says:'"I need more me."',do:"Raise their own mic or instrument in their personal monitor mix."},
+      {says:'"I can\'t hear the keys."',do:"Raise the keyboard channel in their monitor mix."},
+      {says:'"It\'s too loud in my monitor."',do:"Lower the loudest channel or pull the whole monitor bus down slightly."},
+      {says:'"My monitor is ringing."',do:"Lower their OWN mic in their monitor mix — that's almost always the cause."},
+     ]},
+   ]},
+  {id:7,title:"Recording & Troubleshooting",dur:"15 min",icon:"🛠️",
+   summary:"Record the service to USB and solve the most common problems.",
+   sec:[
+    {t:"steps",h:"Recording to USB",
+     items:[
+      {title:"Plug a USB flash drive into the top panel",desc:"The X32 records stereo audio (what the congregation hears) directly to it."},
+      {title:"Start recording from the screen",desc:"Navigate to the USB/Recorder section and press Record."},
+      {title:"Stop recording BEFORE removing the drive",desc:"Always stop first. Pulling the drive while recording corrupts the audio file."},
+     ]},
+    {t:"steps",h:"Power-Down Order",
+     items:[
+      {title:"Mute mics, bring Main LR down",desc:"Start quieting things down before anything else powers off."},
+      {title:"Speakers & amps off FIRST",desc:"Prevents the pop. Speakers off before anything else changes."},
+      {title:"Wireless off, batteries out or charging",desc:"Remove batteries and place on charger. Ready for next Sunday."},
+      {title:"X32 and stage boxes off LAST",desc:"Console is always the last thing on and the last thing off."},
+     ]},
+    {t:"trouble",h:"Quick Troubleshooting",
+     items:[
+      {p:"Mic has no sound",c:"Mic/pack on? MUTE light off? Fader up? Meter moving? Right layer?"},
+      {p:"Fader does nothing",c:"Wrong layer active, or Sends on Fader is still lit. Check both."},
+      {p:"Wireless cuts out",c:"Check battery level on receiver. Replace the battery."},
+      {p:"Feedback squeal",c:"Pull ringing mic's fader. Mute unused open mics."},
+      {p:"Monitor sounds wrong",c:"Sends on Fader lit? Correct bus selected? Make small adjustments."},
+      {p:"Livestream no audio",c:"Tell the sound lead. Do NOT change routing during service."},
+      {p:"Something very wrong",c:"Recall Sunday scene only with sound lead OK, or call for help."},
+     ]},
+   ]},
+  {id:8,title:"Hands-On Practice",dur:"15 min",icon:"🎓",
+   summary:"Run the practice service and earn your sign-off.",
+   sec:[
+    {t:"rules",h:"Practice Service Checklist",
+     items:[
+      {r:"Recall the Sunday scene",d:"Start from zero — recall the scene, verify faders moved to saved positions."},
+      {r:"Line check two mics and playback",d:"Test a vocal mic and a handheld. Play walk-in music and verify levels."},
+      {r:"Set gain on one mic",d:"All 7 steps: select, solo, perform, adjust, low cut, unsolo, fader near 0."},
+      {r:"Walk-in, then a welcome",d:"Music on low. Unmute speaker mic a beat before they speak, lower music."},
+      {r:"Mix one worship song",d:"Bring up the band. Lead vocal on top. Practice smooth fader moves."},
+      {r:"Two-minute 'sermon'",d:"Mute the band. Keep the pastor mic up and clear."},
+      {r:"Adjust a monitor and exit",d:"Enter Sends on Fader, make one change, exit correctly. Confirm main mix."},
+      {r:"Respond to feedback call",d:"Instructor creates feedback — you find and pull the right fader."},
+      {r:"Power down in correct order",d:"Speakers first, console last. No shortcuts."},
+     ]},
+    {t:"callout-g",c:"🎓 After completing the practice service, your sound lead gives you a verbal sign-off. Keep the Quick Reference Card at the console every Sunday. When in doubt: mute the problem, then ask."},
+    {t:"callout-i",c:"Productions by Tubb LLC / T-Man Music — Anthony Tubman Jr.\n📞 478-442-2835 · productionsbytubb.com\n✉️ productionsbytubb@yahoo.com"},
+   ]},
+];
+
+// ═══════════════════════════════════════════
+// QUIZ DATA
+// ═══════════════════════════════════════════
+const Q={
+ 1:{title:"Lesson 1 — Golden Rules & Vocabulary",qs:[
+  {q:"According to the Golden Rules, what do you do with the Sunday scene every week?",opts:["Save your changes over it","Recall (load) it, never save over it","Create a new scene each Sunday","Leave it from last week"],c:1,exp:"Golden Rule #1: Recall, don't save. You load the Sunday scene every week but NEVER save over it."},
+  {q:"What does a LIT (red) MUTE button mean?",opts:["The channel is ON and working","The fader is at zero","The channel is OFF — no sound","The mic is clipping"],c:2,exp:"Lit (red) MUTE = channel is OFF. Dark MUTE = channel is ON. This is the most common trip-up for new volunteers."},
+  {q:"What is a 'Scene' on the Behringer X32?",opts:["A view of the stage from the console","A type of reverb effect","A saved snapshot of all console settings","A list of songs for the service"],c:2,exp:"A Scene is a saved snapshot of the entire console — faders, mutes, gain, EQ, routing, and monitor mixes. The X32 stores up to 100 scenes."},
+  {q:"If you hear feedback during service, what should you do FIRST?",opts:["Pull the main LR fader all the way down","Turn off the stage monitors","Pull down the fader of the ringing mic","Call the pastor immediately"],c:2,exp:"Pull the ringing mic's fader. Never grab the main LR first — that kills all sound. Golden Rule #2: fix the channel, not the master."},
+ ]},
+ 2:{title:"Lesson 2 — Console Tour",qs:[
+  {q:"What does pressing SELECT on a channel strip do?",opts:["Mutes the channel","Picks the channel you are working on","Solos the channel in headphones","Sets the channel to 0 dB"],c:1,exp:"SELECT picks the channel you're about to work with. The top-left channel strip section then shows that channel's gain, EQ, and other settings."},
+  {q:"Your faders aren't showing the microphones you expect. What should you check?",opts:["The gain knob","The mute buttons","The layer buttons","The main LR fader"],c:2,exp:"The faders display 16 channels at a time based on the active layer button. For Sunday service, CH 1-16 must be your active layer."},
+  {q:"When a MUTE button is DARK (not lit), what does that mean?",opts:["The channel is off — no sound","The channel has no signal","Sound is ON — the channel is active","The fader is too high"],c:2,exp:"Dark MUTE = channel is ON. Lit (red) MUTE = channel is OFF. It's the opposite of what you might expect."},
+  {q:"Which zone of the X32 sets the overall volume to the main house speakers?",opts:["The Bus faders","The Sends on Fader button","The Main LR fader","The DCA group faders"],c:2,exp:"The Main LR fader is on the far right. It controls the total volume to the main house speakers."},
+ ]},
+ 3:{title:"Lesson 3 — Power On & Loading",qs:[
+  {q:"What is the correct power-ON order?",opts:["Speakers first, then console","Console first, then speakers last","Turn everything on at the same time","Wireless first, then everything else"],c:1,exp:"Always go source to speakers: Console → wireless/computers → (main fader down) → speakers LAST. This prevents damaging speaker pops."},
+  {q:"When you 'load the Sunday scene,' what physically happens?",opts:["The screen shows the stage camera","All faders motor to their saved Sunday positions","The console resets to factory defaults","A list of songs appears on screen"],c:1,exp:"Loading a scene restores the saved snapshot — faders motor to position, mutes activate, gain settings restore. Watch the faders move; that's completely normal."},
+  {q:"When powering DOWN, what should go off FIRST?",opts:["The X32 console","The stage boxes","The amplifiers and powered speakers","The wireless receivers"],c:2,exp:"Speakers first on power-down, just as they go on last during power-up. This prevents the loud pop that can damage speakers."},
+ ]},
+ 4:{title:"Lesson 4 — Gain & Levels",qs:[
+  {q:"What is the key difference between GAIN and FADER?",opts:["They both control how loud the room is","Gain set at sound check; fader used all service","Fader set at sound check; gain used during service","Gain controls monitors; fader controls mains"],c:1,exp:"Gain boosts the mic signal coming INTO the console — set once at sound check. Fader controls how loud that channel is in the room — used all service."},
+  {q:"When reading the channel meter, what is the ideal level?",opts:["Barely moving — just a little green","Consistently sitting in the red","Green, with peaks just touching yellow on loud parts","Always fully in the yellow"],c:2,exp:"Green touching yellow on the loudest moments is perfect. Barely moving = gain too low. Hitting red = distortion (clipping) — turn gain down."},
+  {q:"When setting gain, what is the FIRST thing you do?",opts:["Press MUTE on the channel","Press SOLO and put on headphones","Press SELECT on the channel","Raise the Main LR fader"],c:2,exp:"First press SELECT so the channel strip section shows that channel. Then press SOLO to listen in isolation through headphones."},
+  {q:"The meter for the pastor's mic suddenly turns red during service. What do you do?",opts:["Raise the main LR fader to compensate","Turn the GAIN down on that channel","Mute the channel","Pull down the bus master"],c:1,exp:"Red = clipping/distortion. With the sound lead's approval, reduce the GAIN until the meter returns to the green-yellow range."},
+ ]},
+ 5:{title:"Lesson 5 — Mixing the Service",qs:[
+  {q:"During the sermon, which source is your top priority?",opts:["The worship leader","The band instruments","The pastor's microphone","The background music"],c:2,exp:"During the sermon, the pastor mic is everything. All other channels muted or very low. Full focus on speech clarity for the message."},
+  {q:"When a speaker finishes and walks away, what should you do immediately?",opts:["Leave the mic open in case they return","Raise the fader slightly","Mute their microphone","Reload the Sunday scene"],c:2,exp:"Mute the mic as soon as they finish. Open mics pick up background noise and cause unexpected feedback. Clean in, clean out."},
+  {q:"During worship, which channel should sit at the highest level?",opts:["The bass guitar","The lead vocal","The kick drum","The piano"],c:1,exp:"The lead vocal should be clearly on top. Congregation members need to hear the words to sing along. Everything else supports the vocal."},
+  {q:"True or False: If feedback starts, the safest move is to immediately pull the main LR fader all the way down.",opts:["True — this stops all feedback instantly","False — pull the ringing channel's fader first","True — the main fader is always the fastest fix","False — press MUTE on all channels at once"],c:1,exp:"FALSE. Pulling main LR kills ALL sound — worse than a moment of feedback. Pull the ringing channel first. Main LR only in a true emergency."},
+ ]},
+ 6:{title:"Lesson 6 — Stage Monitors",qs:[
+  {q:"What does pressing 'Sends on Fader' do?",opts:["Sends audio to USB recorder","Turns left faders into monitor mix controls","Resets all faders to 0 dB","Mutes all bus outputs"],c:1,exp:"Sends on Fader turns the left bank of faders into monitor send controls. Each fader now controls how loud a channel is in the selected monitor mix."},
+  {q:"A musician says: 'I need more me.' What do you do?",opts:["Raise the Main LR fader","Tell them to sing louder","Enter Sends on Fader, select their bus, raise their own channel","Reload the Sunday scene"],c:2,exp:"'More me' = they want to hear themselves more in their monitor. Enter Sends on Fader, select their bus, raise their own mic or instrument."},
+  {q:"After adjusting a stage monitor, what MUST you do?",opts:["Save the scene","Press Sends on Fader again to exit monitor mode","Reload the Sunday scene","Pull the main LR down"],c:1,exp:"CRITICAL: Press Sends on Fader again so the light goes OFF. If you leave it on, you'll accidentally change monitors instead of the room mix."},
+  {q:"A singer's monitor is ringing. What do you do first?",opts:["Pull the main LR fader","Increase gain on their channel","Lower their own mic in their monitor mix","Turn off the monitor speaker"],c:2,exp:"The singer's own mic is picking up their monitor. Enter Sends on Fader, select their bus, lower THEIR OWN mic in their monitor to break the loop."},
+ ]},
+ 7:{title:"Lesson 7 — Recording & Troubleshooting",qs:[
+  {q:"A microphone has no sound. What is the FIRST thing to check?",opts:["Replace the mic immediately","Call the sound lead right away","Mic/pack on? MUTE off? Fader up? Meter moving? Right layer?","Pull the main LR fader up"],c:2,exp:"Simple things first: (1) Is the mic/pack powered? (2) Is MUTE light dark? (3) Is the fader up? (4) Is the meter moving? (5) Right layer?"},
+  {q:"You move a fader and nothing changes in the room. What are the two most likely causes?",opts:["Speakers off and mic broken","Wrong layer active, or Sends on Fader is still lit","Scene not loaded and gain too low","Main LR down and EQ wrong"],c:1,exp:"(1) Wrong layer — fader may be controlling a different set of channels. (2) Sends on Fader still lit — faders are controlling monitors, not the room."},
+  {q:"How does the Behringer X32 record the service?",opts:["Via Bluetooth to a phone","To a laptop by USB cable","To a USB flash drive in the top panel","To an SD card in the front"],c:2,exp:"The X32 records stereo audio to a standard USB flash drive in the top panel. Start/stop from the screen. ALWAYS stop before removing the drive."},
+  {q:"During service you notice the livestream has no audio. What do you do?",opts:["Change routing in Setup immediately","Tell the sound lead and don't change routing","Reload the Sunday scene","Raise the livestream bus fader"],c:1,exp:"Golden Rule #4: Stay off setup screens. Tell the sound lead. Attempting to fix routing during service risks making everything worse."},
+ ]},
+ 8:{title:"Lesson 8 — Practice Sign-Off",qs:[
+  {q:"What is the purpose of the Quick Reference Card?",opts:["Lists the songs for Sunday service","Shows volunteer attendance","Keeps key procedures at hand during service","Is a daily backup of console settings"],c:2,exp:"The Quick Reference Card is a condensed cheat-sheet — golden rules, power order, service flow, troubleshooting — kept at the console when you need it most."},
+  {q:"After completing the practice service run-through, what do you receive?",opts:["A digital certificate emailed automatically","A verbal sign-off from the sound lead","A free upgrade to the advanced class","Access to the console's Setup menus"],c:1,exp:"Your sound lead gives you a verbal sign-off after the practice service, confirming you've demonstrated all core skills and are ready to serve."},
+ ]},
+};
+
+// ═══════════════════════════════════════════
+// FAQ DATA
+// ═══════════════════════════════════════════
+const FAQ=[
+ {q:"What do I do if I hear feedback?",a:"Stay calm! Pull down the fader of the ringing mic quickly. If you can't tell which one, mute any mics not being actively used. Never grab the main LR fader first — that kills all sound."},
+ {q:"How do I load the Sunday scene?",a:"Press View in the Scenes section. Find the Sunday scene in the list, press Go, and confirm. The faders will motor to their saved positions — that's completely normal."},
+ {q:"What does a lit (red) MUTE button mean?",a:"A lit red MUTE button means the channel is OFF — no sound is coming through. A dark (unlit) MUTE button means the channel is ON and sound is flowing."},
+ {q:"What's the difference between gain and fader?",a:"Gain boosts the mic signal coming into the console. Set it once at sound check. The fader controls how loud that channel is in the room during service. Use faders all service; only change gain if the sound lead approves."},
+ {q:"How do I fix a mic that has no sound?",a:"Check in order: (1) Is the mic or wireless pack turned on? (2) Is the MUTE light dark? (3) Is the fader up? (4) Is the meter moving at all? (5) Are you on the correct channel layer?"},
+ {q:"What is the correct power-on order?",a:"Source to speakers: (1) Console and stage boxes first — wait for X32 to fully boot. (2) Wireless receivers and computers. (3) Bring main fader down. (4) Speakers and amplifiers LAST. Power-off is reverse: speakers first, console last."},
+ {q:"How do I adjust stage monitors?",a:"Press Sends on Fader (it lights up). Press SELECT on the monitor bus on the right. Left faders now control that monitor. Make small adjustments, then press Sends on Fader again to EXIT. Always confirm the button is OFF before mixing the room."},
+ {q:"How do I set gain on a mic?",a:"SELECT the channel → SOLO with headphones → have them perform at real service volume → turn GAIN until meter shows green, touching yellow → turn on Low Cut for voices → press SOLO off → set fader near 0 and adjust by ear."},
+ {q:"What do I do when a musician says 'I need more me'?",a:"Enter Sends on Fader mode, select their monitor bus, and raise their own mic or instrument channel. Exit Sends on Fader when done."},
+ {q:"Can I save changes to the console?",a:"Recall, don't save (Golden Rule #1). You load the Sunday scene at the start but NEVER save over it. If you need to restore, recall the scene again."},
+ {q:"What is a 'scene' on the X32?",a:"A scene is a saved snapshot of the entire console — fader positions, mute states, gain, EQ, routing, and monitor mixes. The X32 stores up to 100 scenes."},
+ {q:"What does Sends on Fader do?",a:"It turns all left-bank faders from room-mix controls into monitor send controls. While it's lit, you're adjusting stage monitors. Press again to return to room-mix mode. The light being ON or OFF is critical — always check it."},
+ {q:"What layer should I be on for Sunday?",a:"CH 1-16 should be your active layer for Sunday. That's where the main vocal mics and instruments typically live. If your faders look wrong, check the layer buttons."},
+ {q:"How do I fix a monitor that's ringing?",a:"Enter Sends on Fader, select that person's monitor bus, and lower their own mic or instrument in their monitor mix. That breaks the feedback loop."},
+ {q:"How do I record the service?",a:"Plug a USB flash drive into the top panel. Navigate to the USB/Recorder section on screen and press Record. Start and stop from there. ALWAYS stop recording before removing the drive."},
+ {q:"A fader does nothing when I move it — why?",a:"Two most likely causes: (1) You're on the wrong layer — the fader is controlling a different set of channels. (2) Sends on Fader is still lit — faders are controlling monitors, not the room."},
+ {q:"What do I do if the livestream has no audio?",a:"Tell the sound lead. Do NOT try to fix routing during service (Golden Rule #4). Livestream audio issues require changes in the Setup menus — that's the sound lead's job."},
+ {q:"How do I turn on Low Cut?",a:"After pressing SELECT on a voice channel, press the Low Cut (or HPF) button in the channel strip section at top left. It filters out low-frequency rumble and makes speech much clearer."},
+];
+
+// Sign-off skills
+const SO_SKILLS=[
+ "Follows all Seven Golden Rules",
+ "Powers on and off in the correct order",
+ "Recalls the Sunday scene correctly",
+ "Uses SELECT, MUTE, SOLO, and faders correctly",
+ "Sets gain using the meter (green, touching yellow)",
+ "Mixes the service flow smoothly",
+ "Uses and exits Sends on Fader correctly",
+ "Responds calmly to feedback and problems",
+];
+
+// ═══════════════════════════════════════════
+// FIREBASE CONFIG — paste your config here
+// Get it from: console.firebase.google.com
+//   → Your Project → ⚙️ Settings → Your apps → Web app
+// ═══════════════════════════════════════════
+const FB_CONFIG = {
+  apiKey: "AIzaSyAtgABwuH062D9yYpNFhAO2ijb65OG4rzI",
+  authDomain: "x32-training.firebaseapp.com",
+  projectId: "x32-training",
+  storageBucket: "x32-training.firebasestorage.app",
+  messagingSenderId: "339756472995",
+  appId: "1:339756472995:web:a826bd09b02ce029113d16"
+};
+const FB_READY = FB_CONFIG.apiKey !== "YOUR_API_KEY" && typeof firebase !== 'undefined';
+let db=null, auth=null, storage=null;
+if(FB_READY){
+  try{
+    firebase.initializeApp(FB_CONFIG);
+    auth=firebase.auth();
+    db=firebase.firestore();
+    try{ storage=firebase.storage(); }catch(e){ storage=null; }
+  }catch(e){ console.warn('Firebase init failed:',e); }
+}
+
+// ═══════════════════════════════════════════
+// USER MANAGEMENT — Firebase Auth
+// ═══════════════════════════════════════════
+let CU=null; // {id(uid), name, email, role}
+let chatUnsub=null; // Firestore listener unsubscribe
+let currentChatUid=null; // which user's chat is open (instructor mode)
+
+function initials(name){return(name||'?').trim().split(/\s+/).map(w=>w[0]).join('').toUpperCase().slice(0,2)||'?'}
+
+// ── Auth form UI
+function switchAuthTab(tab){
+ document.getElementById('tab-signin').classList.toggle('on',tab==='signin');
+ document.getElementById('tab-signup').classList.toggle('on',tab==='signup');
+ const isUp=tab==='signup';
+ document.getElementById('auth-name-row').style.display=isUp?'':'none';
+ document.getElementById('auth-btn').textContent=isUp?'Create Account →':'Sign In →';
+}
+
+function setAuthStatus(msg,color){document.getElementById('auth-status').innerHTML=`<span style="color:${color||'var(--m)'}">${msg}</span>`;}
+
+async function doAuth(){
+ const email=document.getElementById('auth-email').value.trim();
+ const pass=document.getElementById('auth-pass').value;
+ const name=document.getElementById('auth-name').value.trim();
+ const isUp=document.getElementById('tab-signup').classList.contains('on');
+ if(!email||!pass){setAuthStatus('Please enter email and password.','var(--er)');return;}
+ if(!auth){
+  setAuthStatus('Firebase not available in this preview. Deploy to Firebase Hosting to use live accounts.','var(--wn)');
+  return;
+ }
+ const btn=document.getElementById('auth-btn');
+ btn.disabled=true;btn.innerHTML='<span class="loading-spin"></span>Working…';
+ try{
+  if(isUp){
+   if(!name){setAuthStatus('Please enter your name.','var(--er)');btn.disabled=false;btn.textContent='Create Account →';return;}
+   const uc=await auth.createUserWithEmailAndPassword(email,pass);
+   await uc.user.updateProfile({displayName:name});
+   await db.collection('users').doc(uc.user.uid).set({name,email,role:'volunteer',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  } else {
+   await auth.signInWithEmailAndPassword(email,pass);
+  }
+ } catch(e){
+  const msgs={
+   'auth/user-not-found':'No account with that email.',
+   'auth/wrong-password':'Wrong password.',
+   'auth/email-already-in-use':'Email already in use — sign in instead.',
+   'auth/weak-password':'Password must be at least 6 characters.',
+   'auth/invalid-email':'Invalid email address.',
+   'auth/too-many-requests':'Too many attempts. Try again later.',
+  };
+  setAuthStatus(msgs[e.code]||e.message,'var(--er)');
+  btn.disabled=false;btn.textContent=isUp?'Create Account →':'Sign In →';
+ }
+}
+
+async function doResetPassword(){
+ const email=document.getElementById('auth-email').value.trim();
+ if(!email){setAuthStatus('Enter your email above first.','var(--wn)');return;}
+ try{await auth.sendPasswordResetEmail(email);setAuthStatus('Reset email sent! Check your inbox.','var(--ok)');}
+ catch(e){setAuthStatus(e.message,'var(--er)');}
+}
+
+function renderLoginScreen(){
+ document.getElementById('v-login-screen').style.display='flex';
+ document.getElementById('shell').style.display='none';
+ if(FB_READY){
+  document.getElementById('auth-form').style.display='';
+  document.getElementById('offline-form').style.display='none';
+  document.getElementById('login-sub').textContent='Sign in to sync your progress across any device';
+ } else {
+  document.getElementById('auth-form').style.display='none';
+  document.getElementById('offline-form').style.display='';
+  document.getElementById('login-sub').textContent='⚠️ Firebase not configured — using offline mode';
+  renderOfflineUsers();
+ }
+}
+
+// Offline fallback (no Firebase)
+function renderOfflineUsers(){
+ const users=JSON.parse(localStorage.getItem('x32users')||'[]');
+ const el=document.getElementById('offline-users');
+ if(!users.length){el.innerHTML='';return;}
+ el.innerHTML='<div class="login-div">existing profiles</div>'+users.map(u=>{
+  const p=JSON.parse(localStorage.getItem('x32p_'+u.id)||'{}');
+  const done=Object.values(p).filter(Boolean).length;
+  return`<button class="user-btn" onclick="selectOfflineUser('${u.id}')">
+   <div class="user-av">${initials(u.name)}</div>
+   <div class="user-info"><div class="user-name">${u.name}</div><div class="user-meta">${done}/8 lessons done</div></div>
+  </button>`;
+ }).join('');
+}
+
+function createOfflineUser(){
+ const name=document.getElementById('nu-name').value.trim();
+ const pin=document.getElementById('nu-pin').value.trim();
+ const err=document.getElementById('nu-err');
+ if(!name){err.textContent='Please enter your name.';return;}
+ if(pin&&(pin.length!==4||!/^\d{4}$/.test(pin))){err.textContent='PIN must be 4 digits.';return;}
+ const users=JSON.parse(localStorage.getItem('x32users')||'[]');
+ const id='u'+Date.now();
+ users.push({id,name,pin:pin||null});
+ localStorage.setItem('x32users',JSON.stringify(users));
+ loginUser({id,name,email:'',role:'volunteer'});
+}
+
+function selectOfflineUser(id){
+ const users=JSON.parse(localStorage.getItem('x32users')||'[]');
+ const u=users.find(x=>x.id===id);
+ if(!u)return;
+ loginUser({id:u.id,name:u.name,email:'',role:'volunteer'});
+}
+
+async function loginUser(u){
+ // If Firebase, fetch role from Firestore
+ if(FB_READY&&u.email){
+  try{
+   const snap=await db.collection('users').doc(u.id).get();
+   if(snap.exists)u.role=snap.data().role||'volunteer';
+  }catch(e){}
+ }
+ CU=u;
+ document.getElementById('v-login-screen').style.display='none';
+ document.getElementById('shell').style.display='flex';
+ // Load cloud data into local cache
+ if(FB_READY)await loadCloudData();
+ renderHome();updateSb();renderFaq('');renderSO();
+}
+
+async function loadCloudData(){
+ if(!CU||!FB_READY)return;
+ try{
+  const snap=await db.collection('progress').doc(CU.id).get();
+  if(snap.exists){
+   const d=snap.data();
+   if(d.lessons)localStorage.setItem('x32p_'+CU.id,JSON.stringify(d.lessons));
+   if(d.scores)localStorage.setItem('x32s_'+CU.id,JSON.stringify(d.scores));
+   if(d.notes)localStorage.setItem('x32n_'+CU.id,JSON.stringify(d.notes));
+  }
+ }catch(e){}
+}
+
+function switchUser(){
+ if(chatUnsub){chatUnsub();chatUnsub=null;}
+ if(FB_READY&&auth){auth.signOut();}
+ CU=null;
+ renderLoginScreen();
+ document.getElementById('nu-name')&&(document.getElementById('nu-name').value='');
+ document.getElementById('nu-pin')&&(document.getElementById('nu-pin').value='');
+}
+
+// ── Sidebar user chip
+function updateUserChip(){
+ const el=document.getElementById('sb-user-chip');
+ if(!el)return;
+ if(CU){
+  el.innerHTML=`<div class="sb-sec" style="margin-top:8px;">
+   <button class="sb-user" onclick="switchUser()" style="display:flex;align-items:center;gap:10px;padding:10px 16px;width:100%;background:none;border:none;cursor:pointer;color:var(--t)">
+    <div class="sb-uav">${initials(CU.name)}</div>
+    <div style="flex:1;text-align:left">
+     <div class="sb-uname">${CU.name}</div>
+     <div class="sb-uswitch">${CU.role==='instructor'?'👩‍🏫 Instructor · ':''}Tap to sign out</div>
+    </div>
+   </button>
+  </div>`;
+ }
+}
+
+// ═══════════════════════════════════════════
+// STATE & STORAGE (Firestore + localStorage cache)
+// ═══════════════════════════════════════════
+const S={view:'home',lid:null,qlid:null,qq:0,qrunning:0,teachOpen:false,noteLesson:1};
+
+function getP_u(uid){try{return JSON.parse(localStorage.getItem('x32p_'+uid)||'{}')}catch{return{}}}
+function getS_u(uid){try{return JSON.parse(localStorage.getItem('x32s_'+uid)||'{}')}catch{return{}}}
+
+function gP(){if(!CU)return{};return getP_u(CU.id)}
+function gN(){if(!CU)return{};try{return JSON.parse(localStorage.getItem('x32n_'+CU.id)||'{}')}catch{return{}}}
+function gS(){if(!CU)return{};return getS_u(CU.id)}
+
+// Write to localStorage immediately, then sync to Firestore
+function sP(d){
+ if(!CU)return;
+ localStorage.setItem('x32p_'+CU.id,JSON.stringify(d));
+ syncProgress();
+}
+function sN(id,t){
+ if(!CU)return;
+ const n=gN();n[id]=t;
+ localStorage.setItem('x32n_'+CU.id,JSON.stringify(n));
+ syncProgress();
+}
+function svS(id,sc,tot){
+ if(!CU)return;
+ const s=gS();s[id]={sc,tot,pct:Math.round(sc/tot*100)};
+ localStorage.setItem('x32s_'+CU.id,JSON.stringify(s));
+ syncProgress();
+}
+function mkDone(id){const p=gP();p[id]=true;sP(p)}
+
+let _syncTimer=null;
+function syncProgress(){
+ if(!FB_READY||!CU)return;
+ clearTimeout(_syncTimer);
+ _syncTimer=setTimeout(async()=>{
+  try{
+   await db.collection('progress').doc(CU.id).set({
+    lessons:gP(),scores:gS(),notes:gN(),
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+   },{merge:true});
+  }catch(e){}
+ },1500);
+}
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+function go(view,opts={}){
+ S.view=view;
+ if(opts.lid!==undefined)S.lid=opts.lid;
+ if(opts.qlid!==undefined)S.qlid=opts.qlid;
+ document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+ const el=document.getElementById('v-'+view);
+ if(el)el.classList.add('on');
+ if(view==='home')renderHome();
+ if(view==='lesson')renderLesson();
+ if(view==='quiz')startQuiz(S.qlid);
+ if(view==='notes')renderNotes();
+ if(view==='signoff')renderSO();
+ if(view==='help')renderHelp();
+ updateSb();
+ document.getElementById('main').scrollTo(0,0);
+ if(window.innerWidth<=768)closeSb();
+}
+
+function continueL(){
+ const p=gP();
+ for(let i=1;i<=8;i++){if(!p[i]){go('lesson',{lid:i});return;}}
+ go('lesson',{lid:8});
+}
+
+// ═══════════════════════════════════════════
+// SIDEBAR
+// ═══════════════════════════════════════════
+function updateSb(){
+ const p=gP(),s=gS();
+ const done=Object.values(p).filter(Boolean).length;
+ const pct=Math.round(done/8*100);
+ document.getElementById('sb-txt').textContent=`${done} of 8 lessons`;
+ document.getElementById('sb-pct').textContent=pct+'%';
+ document.getElementById('sb-fill').style.width=pct+'%';
+ updateUserChip();
+ const nav=document.getElementById('lessnav');
+ nav.innerHTML=L.map(l=>{
+  const dn=p[l.id],sc=s[l.id];
+  const active=S.view==='lesson'&&S.lid===l.id||S.view==='quiz'&&S.qlid===l.id;
+  return`<button class="ni ${dn?'done':''} ${active?'active':''}" onclick="go('lesson',{lid:${l.id}})">
+   <span class="ni-icon">${dn?'✅':l.icon}</span>
+   <span class="ni-label">Lesson ${l.id}: ${l.title}</span>
+   ${sc?`<span class="ni-score">${sc.pct}%</span>`:''}
+  </button>`;
+ }).join('');
+}
+
+// ═══════════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════════
+function renderHome(){
+ const p=gP(),s=gS(),n=gN();
+ const done=Object.values(p).filter(Boolean).length;
+ const qpassed=Object.values(s).filter(x=>x.pct>=70).length;
+ const pcts=Object.values(s).map(x=>x.pct);
+ const avg=pcts.length?Math.round(pcts.reduce((a,b)=>a+b,0)/pcts.length)+'%':'—';
+ const noteCount=Object.keys(n).filter(k=>n[k]?.trim()).length;
+ document.getElementById('st-l').textContent=`${done}/8`;
+ document.getElementById('st-q').textContent=`${qpassed}/8`;
+ document.getElementById('st-a').textContent=avg;
+ document.getElementById('st-n').textContent=noteCount;
+ const btn=document.getElementById('continue-btn');
+ if(done===0)btn.textContent='▶ Start Lesson 1';
+ else if(done<8){const nx=L.find(l=>!p[l.id]);btn.textContent=nx?`▶ Continue: Lesson ${nx.id}`:'▶ Review Lessons';}
+ else btn.textContent='🎓 All Lessons Complete!';
+ const grid=document.getElementById('dash-grid');
+ grid.innerHTML=L.map(l=>{
+  const dn=p[l.id],sc=s[l.id];
+  return`<div class="lcard ${dn?'done':''}" onclick="go('lesson',{lid:${l.id}})">
+   <div class="lcard-status">${dn?'✅':'⬜'}</div>
+   <div class="lcard-icon">${l.icon}</div>
+   <div class="lcard-num">Lesson ${l.id} · ${l.dur}</div>
+   <div class="lcard-title">${l.title}</div>
+   <div class="lcard-dur">${l.summary}</div>
+   ${sc?`<div class="lcard-score">Quiz: ${sc.sc}/${sc.tot} (${sc.pct}%)</div>`:''}
+  </div>`;
+ }).join('');
+}
+
+// ═══════════════════════════════════════════
+// LESSON RENDER
+// ═══════════════════════════════════════════
+function renderLesson(){
+ const l=L.find(x=>x.id===S.lid);
+ if(!l)return;
+ const p=gP(),s=gS();
+ const done=p[l.id],sc=s[l.id];
+ const prevL=L.find(x=>x.id===l.id-1),nextL=L.find(x=>x.id===l.id+1);
+ const steps=L.map(x=>`<div class="ps ${p[x.id]?'done':x.id===l.id?'cur':''}"></div>`).join('');
+ const secs=l.sec.map(renderSec).join('');
+ document.getElementById('lesson-body').innerHTML=`
+  <div class="lhdr">
+   <div class="bc"><a onclick="go('home')">Home</a> › ${l.title}</div>
+   <div class="lhdr-row">
+    <div class="lhdr-bigicon">${l.icon}</div>
+    <div>
+     <div class="lhdr-num">Lesson ${l.id} of ${L.length} · ${l.dur}</div>
+     <div class="lhdr-title">${l.title}</div>
+     <div class="lhdr-meta">
+      ${done?'<span class="tag tag-g">✅ Completed</span>':'<span class="tag tag-b">In Progress</span>'}
+      ${sc?`<span class="tag tag-w">Quiz: ${sc.pct}%</span>`:''}
+     </div>
+    </div>
+   </div>
+   <div class="psteps">${steps}</div>
+   <div class="brow">
+    ${!done?`<button class="btn btn-g" onclick="doneLesson(${l.id})">✅ Mark Complete</button>`:''}
+    <button class="btn btn-p" onclick="go('quiz',{qlid:${l.id}})">📝 Take Quiz</button>
+    <button class="btn btn-o btn-sm" onclick="toggleTeach()">🎓 Teach Mode</button>
+   </div>
+  </div>
+  ${secs}
+  <div class="lnav">
+   <div>${prevL?`<button class="btn btn-o" onclick="go('lesson',{lid:${prevL.id}})">← Lesson ${prevL.id}</button>`:'<span></span>'}</div>
+   <div>${nextL?`<button class="btn btn-p" onclick="go('lesson',{lid:${nextL.id}})">Lesson ${nextL.id} →</button>`:`<button class="btn btn-g" onclick="go('home')">🏠 Dashboard</button>`}</div>
+  </div>`;
+}
+
+function renderSec(sec){
+ if(sec.t==='quote')return`<div class="cs"><div class="cquote">${sec.c.replace(/\n/g,'<br>')}</div></div>`;
+ if(sec.t==='rules')return`<div class="cs"><h3>📋 ${sec.h}</h3><div class="rlist">${sec.items.map((item,i)=>`<div class="ri"><div class="ri-n">${i+1}</div><div><div class="ri-t">${item.r}</div><div class="ri-d">${item.d}</div></div></div>`).join('')}</div></div>`;
+ if(sec.t==='terms')return`<div class="cs"><h3>📖 ${sec.h}</h3><table class="tt"><thead><tr><th>Word</th><th>What It Means</th></tr></thead><tbody>${sec.items.map(t=>`<tr><td>${t.term}</td><td>${t.def}</td></tr>`).join('')}</tbody></table></div>`;
+ if(sec.t==='steps')return`<div class="cs">${sec.h?`<h3>🔢 ${sec.h}</h3>`:''}<div class="slist">${sec.items.map((item,i)=>`<div class="si"><div class="si-n">${i+1}</div><div><div class="si-t">${item.title}</div><div class="si-d">${item.desc}</div></div></div>`).join('')}</div></div>`;
+ if(sec.t==='callout-i')return`<div class="ca ca-i"><div class="ca-icon">ℹ️</div><div class="ca-txt">${sec.c.replace(/\n/g,'<br>')}</div></div>`;
+ if(sec.t==='callout-w')return`<div class="ca ca-w"><div class="ca-icon">⚠️</div><div class="ca-txt">${sec.c.replace(/\n/g,'<br>')}</div></div>`;
+ if(sec.t==='callout-g')return`<div class="ca ca-g"><div class="ca-icon">✅</div><div class="ca-txt">${sec.c.replace(/\n/g,'<br>')}</div></div>`;
+ if(sec.t==='mute')return`<div class="cs"><h3>🔴 MUTE Button States</h3><div class="mdemo"><div class="ms on"><div class="ms-btn lit">MUTE</div><div class="ms-title">Channel is OFF</div><div class="ms-desc">Lit red = silenced. No sound through.</div></div><div class="ms off"><div class="ms-btn dark">MUTE</div><div class="ms-title">Sound is ON</div><div class="ms-desc">Dark = channel is live and passing audio.</div></div></div></div>`;
+ if(sec.t==='meter')return`<div class="cs"><h3>📊 Reading the Meter</h3><div class="mvis"><div class="mst mn"><div class="mbar"><div class="mfill"></div></div><div class="mst-lbl">No Signal</div><div class="mst-desc">Check mic, mute, cable, wireless pack</div></div><div class="mst ml"><div class="mbar"><div class="mfill"></div></div><div class="mst-lbl">Too Low</div><div class="mst-desc">Gain too low — turn gain up slowly</div></div><div class="mst mg"><div class="mbar"><div class="mfill"></div></div><div class="mst-lbl">✅ Perfect</div><div class="mst-desc">Green + touching yellow peaks</div></div><div class="mst mc"><div class="mbar"><div class="mfill"></div></div><div class="mst-lbl">⚠️ Clipping</div><div class="mst-desc">Hitting red — turn gain DOWN</div></div></div></div>`;
+ if(sec.t==='compare')return`<div class="cs"><h3>⚖️ ${sec.h}</h3><div class="cgrid"><div class="cc ca"><h4>${sec.a.title}</h4><ul>${sec.a.items.map(i=>`<li>${i}</li>`).join('')}</ul></div><div class="cc cb"><h4>${sec.b.title}</h4><ul>${sec.b.items.map(i=>`<li>${i}</li>`).join('')}</ul></div></div></div>`;
+ if(sec.t==='trouble')return`<div class="cs"><h3>🛠️ ${sec.h}</h3><table class="trtbl"><thead><tr><th>Problem</th><th>Check These, In Order</th></tr></thead><tbody>${sec.items.map(t=>`<tr><td>${t.p}</td><td>${t.c}</td></tr>`).join('')}</tbody></table></div>`;
+ if(sec.t==='mreqs')return`<div class="cs"><h3>🗣️ ${sec.h}</h3><div class="mreqs">${sec.items.map(m=>`<div class="mreq"><div class="mreq-says">${m.says}</div><div class="mreq-arr">→</div><div class="mreq-do">${m.do}</div></div>`).join('')}</div></div>`;
+ return'';
+}
+
+function doneLesson(id){mkDone(id);renderLesson();updateSb();renderHome();}
+
+// ═══════════════════════════════════════════
+// QUIZ ENGINE
+// ═══════════════════════════════════════════
+function startQuiz(lid){
+ S.qlid=lid;S.qq=0;S.qrunning=0;
+ const l=L.find(x=>x.id===lid),quiz=Q[lid];
+ if(!quiz)return;
+ document.getElementById('qbc').textContent=l.title+' — Quiz';
+ document.getElementById('qtitle').textContent=quiz.title;
+ renderQQ();
+}
+
+function renderQQ(){
+ const quiz=Q[S.qlid];
+ if(S.qq>=quiz.qs.length){renderQScore();return;}
+ const q=quiz.qs[S.qq],tot=quiz.qs.length,pct=Math.round(S.qq/tot*100);
+ document.getElementById('quiz-wrap').innerHTML=`
+  <div class="qhdr"><span>Question ${S.qq+1} of ${tot}</span><span>${S.qrunning} correct so far</span></div>
+  <div class="qpbar"><div class="qpfill" style="width:${pct}%"></div></div>
+  <div class="qq">${q.q}</div>
+  <div class="qopts">${q.opts.map((o,i)=>`<div class="qo" id="qo${i}" onclick="answerQ(${i})"><div class="ql">${String.fromCharCode(65+i)}</div><div>${o}</div></div>`).join('')}</div>
+  <div id="qfb" style="display:none"></div>
+  <div id="qnxt" style="display:none;margin-top:18px;"><button class="btn btn-p" onclick="nextQQ()">${S.qq+1<tot?'Next Question →':'See Results'}</button></div>`;
+}
+
+function answerQ(idx){
+ if(document.querySelector('.qo.answered'))return;
+ const q=Q[S.qlid].qs[S.qq],correct=idx===q.c;
+ document.querySelectorAll('.qo').forEach((el,i)=>{
+  el.classList.add('answered');
+  if(i===q.c)el.classList.add('correct');
+  if(i===idx&&!correct)el.classList.add('wrong');
+ });
+ if(correct)S.qrunning++;
+ const fb=document.getElementById('qfb');
+ fb.style.display='block';
+ fb.className=`qfb ${correct?'ok':'err'}`;
+ fb.innerHTML=`<strong>${correct?'✅ Correct!':'❌ Not quite.'}</strong> ${q.exp}`;
+ document.getElementById('qnxt').style.display='block';
+}
+
+function nextQQ(){S.qq++;renderQQ();}
+
+function renderQScore(){
+ const quiz=Q[S.qlid],sc=S.qrunning,tot=quiz.qs.length,pct=Math.round(sc/tot*100);
+ const passed=pct>=70;
+ svS(S.qlid,sc,tot);
+ if(passed)mkDone(S.qlid);
+ updateSb();renderHome();
+ const nx=L.find(l=>l.id===S.qlid+1);
+ document.getElementById('quiz-wrap').innerHTML=`
+  <div class="qscore pop">
+   <div class="snum" style="color:${passed?'var(--ok)':pct>=50?'var(--wn)':'var(--er)'}">${pct}%</div>
+   <div class="slbl">${sc} of ${tot} correct</div>
+   <div class="smsg">${passed?'🎉 Great work! You passed this lesson.':pct>=50?'Good effort — review the lesson and try again.':'Take another look at the lesson, then retry the quiz.'}</div>
+   <div class="brow" style="justify-content:center;">
+    <button class="btn btn-o" onclick="startQuiz(${S.qlid})">🔁 Retry Quiz</button>
+    ${nx?`<button class="btn btn-p" onclick="go('lesson',{lid:${nx.id}})">Lesson ${nx.id} →</button>`:`<button class="btn btn-g" onclick="go('home')">🏠 Dashboard</button>`}
+   </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// NOTES
+// ═══════════════════════════════════════════
+function renderNotes(){
+ const notes=gN();
+ document.getElementById('ntabs').innerHTML=L.map(l=>`<div class="ntab ${S.noteLesson===l.id?'on':''}" onclick="switchNote(${l.id})">L${l.id}</div>`).join('');
+ const ta=document.getElementById('nta');
+ ta.disabled=false;
+ ta.value=notes[S.noteLesson]||'';
+ document.getElementById('ntlabel').textContent=`Lesson ${S.noteLesson} — ${L.find(l=>l.id===S.noteLesson)?.title}`;
+}
+
+function switchNote(id){
+ const ta=document.getElementById('nta');
+ sN(S.noteLesson,ta.value);
+ S.noteLesson=id;
+ renderNotes();renderHome();
+}
+
+function saveNote(){
+ const ta=document.getElementById('nta');
+ sN(S.noteLesson,ta.value);
+ const btn=document.querySelector('.ntbar .btn');
+ const orig=btn.textContent;
+ btn.textContent='✅ Saved!';btn.style.background='var(--ok)';
+ setTimeout(()=>{btn.textContent=orig;btn.style.background='';},1400);
+ renderHome();
+}
+
+// ═══════════════════════════════════════════
+// SIGN-OFF
+// ═══════════════════════════════════════════
+function renderSO(){
+ document.getElementById('so-rows').innerHTML=SO_SKILLS.map((sk,i)=>`
+  <tr>
+   <td>${sk}</td>
+   <td><label class="socheck"><input type="checkbox" id="so-r${i}"> Ready</label></td>
+   <td><label class="socheck"><input type="checkbox" id="so-np${i}"> Needs Practice</label></td>
+  </tr>`).join('');
+ const d=new Date();
+ document.getElementById('so-date').value=d.toISOString().split('T')[0];
+}
+
+function copySo(){
+ const name=document.getElementById('so-name').value||'___';
+ const inst=document.getElementById('so-inst').value||'___';
+ const date=document.getElementById('so-date').value||'___';
+ const notes=document.getElementById('so-notes').value;
+ let rows=SO_SKILLS.map((sk,i)=>{
+  const r=document.getElementById(`so-r${i}`)?.checked;
+  const np=document.getElementById(`so-np${i}`)?.checked;
+  return`${sk}: ${r?'✅ Ready':np?'🔄 Needs Practice':'—'}`;
+ }).join('\n');
+ const txt=`X32 VOLUNTEER SIGN-OFF\nVolunteer: ${name}\nInstructor: ${inst}\nDate: ${date}\n\nSKILLS:\n${rows}${notes?'\n\nNOTES:\n'+notes:''}\n\nProductions by Tubb LLC · 478-442-2835 · productionsbytubb.com`;
+ try{
+  navigator.clipboard.writeText(txt);
+  document.getElementById('so-copied').style.display='flex';
+  setTimeout(()=>document.getElementById('so-copied').style.display='none',3000);
+ }catch(e){alert(txt);}
+}
+
+// ═══════════════════════════════════════════
+// HELP / LIVE CHAT
+// ═══════════════════════════════════════════
+let stagedImageDataUrl=null;
+let cameraStream=null;
+
+function renderHelp(){
+ const isInst=CU&&CU.role==='instructor';
+ document.getElementById('inst-panel').style.display=isInst?'':'none';
+ if(isInst){loadInstructorTabs();}
+ else{openChatFor(CU?CU.id:null);}
+}
+
+// ── Instructor: list all users with open chats
+async function loadInstructorTabs(){
+ if(!FB_READY||!db)return;
+ try{
+  const snap=await db.collection('helpChats').get();
+  const tabs=document.getElementById('inst-tabs');
+  if(snap.empty){tabs.innerHTML='<div style="color:var(--m);font-size:13px;">No help chats yet.</div>';return;}
+  const uids=[...new Set(snap.docs.map(d=>d.id))];
+  // Fetch names
+  const names={};
+  await Promise.all(uids.map(async uid=>{
+   const u=await db.collection('users').doc(uid).get();
+   names[uid]=u.exists?u.data().name:uid.slice(0,8);
+  }));
+  tabs.innerHTML=uids.map(uid=>`<button class="inst-tab ${currentChatUid===uid?'on':''}" onclick="openChatFor('${uid}')">${initials(names[uid])} ${names[uid]}</button>`).join('');
+  if(!currentChatUid&&uids.length)openChatFor(uids[0]);
+ }catch(e){console.error(e);}
+}
+
+function openChatFor(uid){
+ if(!uid)return;
+ currentChatUid=uid;
+ if(chatUnsub){chatUnsub();chatUnsub=null;}
+ // Update instructor tab highlight
+ document.querySelectorAll('.inst-tab').forEach(t=>{
+  t.classList.toggle('on',t.textContent.trim().startsWith(initials((t.textContent.trim().split(' ').slice(1).join(' '))))||t.onclick.toString().includes(`'${uid}'`));
+ });
+ if(!FB_READY){
+  // Offline: show placeholder
+  document.getElementById('chat-msgs').innerHTML='<div class="chat-empty">Sign in with Firebase to use live chat. 💬</div>';
+  return;
+ }
+ // Listen to messages in real-time
+ const msgsRef=db.collection('helpChats').doc(uid).collection('messages').orderBy('timestamp');
+ chatUnsub=msgsRef.onSnapshot(snap=>{
+  const msgs=snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderChatMessages(msgs,uid);
+ });
+}
+
+function renderChatMessages(msgs,forUid){
+ const el=document.getElementById('chat-msgs');
+ const empty=document.getElementById('chat-empty');
+ if(!msgs.length){
+  el.innerHTML='';el.appendChild(empty||Object.assign(document.createElement('div'),{className:'chat-empty',textContent:'No messages yet. Send your first question below! 👋'}));
+  return;
+ }
+ const myUid=CU?CU.id:null;
+ el.innerHTML=msgs.map(m=>{
+  const isMe=m.from===myUid;
+  const isInst=m.isInstructor;
+  const cls=isMe?'mine':isInst?'instructor':'theirs';
+  const ts=m.timestamp?new Date(m.timestamp.toDate()).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
+  return`<div class="chat-msg ${cls}">
+   ${!isMe?`<div class="chat-name">${m.senderName||'Unknown'}${isInst?' 👩‍🏫':''}</div>`:''}
+   ${m.text?`<div>${m.text}</div>`:''}
+   ${m.photoUrl?`<img class="chat-img" src="${m.photoUrl}" alt="photo" onclick="window.open(this.src,'_blank')">`:''}
+   <div class="chat-time">${ts}</div>
+  </div>`;
+ }).join('');
+ el.scrollTop=el.scrollHeight;
+}
+
+async function sendChatMsg(){
+ const input=document.getElementById('chat-input');
+ const text=input.value.trim();
+ if(!text&&!stagedImageDataUrl)return;
+ if(!CU){alert('Please sign in first.');return;}
+ const targetUid=CU.role==='instructor'?currentChatUid:CU.id;
+ if(!targetUid)return;
+
+ // If offline, show inline message
+ if(!FB_READY){
+  const el=document.getElementById('chat-msgs');
+  const ts=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  el.innerHTML+=`<div class="chat-msg mine"><div>${text}</div><div class="chat-time">${ts}</div></div>`;
+  el.scrollTop=el.scrollHeight;
+  input.value='';
+  clearStaged();
+  return;
+ }
+
+ try{
+  let photoUrl=null;
+  if(stagedImageDataUrl&&storage){
+   // Upload image to Firebase Storage
+   const path=`helpChats/${targetUid}/${Date.now()}.jpg`;
+   const ref=storage.ref(path);
+   await ref.putString(stagedImageDataUrl,'data_url');
+   photoUrl=await ref.getDownloadURL();
+  }
+  await db.collection('helpChats').doc(targetUid).collection('messages').add({
+   from:CU.id,
+   senderName:CU.name,
+   isInstructor:CU.role==='instructor',
+   text:text||null,
+   photoUrl:photoUrl||null,
+   timestamp:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  input.value='';
+  clearStaged();
+ }catch(e){alert('Failed to send: '+e.message);}
+}
+
+// ── Staged image (file upload or camera snap)
+function stageFile(input){
+ const file=input.files[0];if(!file)return;
+ const reader=new FileReader();
+ reader.onload=e=>{stageImage(e.target.result);};
+ reader.readAsDataURL(file);
+}
+
+function stageImage(dataUrl){
+ stagedImageDataUrl=dataUrl;
+ const img=document.getElementById('staged-img');
+ img.src=dataUrl;
+ document.getElementById('staged-wrap').style.display='';
+}
+
+function clearStaged(){
+ stagedImageDataUrl=null;
+ document.getElementById('staged-wrap').style.display='none';
+ document.getElementById('staged-img').src='';
+}
+
+// ── Camera
+async function openCamera(){
+ const strip=document.getElementById('cam-strip');
+ if(cameraStream){strip.style.display='none';stopCamera();return;}
+ try{
+  const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+  cameraStream=stream;
+  const video=document.getElementById('cam-video');
+  video.srcObject=stream;
+  video.style.display='block';
+  strip.style.display='';
+ }catch(e){
+  alert('Camera not available here. Use the 📎 file upload button, or deploy to HTTPS hosting for camera access.');
+ }
+}
+
+function stopCamera(){
+ if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+ const video=document.getElementById('cam-video');
+ video.srcObject=null;video.style.display='none';
+ document.getElementById('cam-strip').style.display='none';
+}
+
+function snapPhoto(){
+ const video=document.getElementById('cam-video');
+ const canvas=document.getElementById('cam-canvas');
+ canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+ canvas.getContext('2d').drawImage(video,0,0);
+ const dataUrl=canvas.toDataURL('image/jpeg',0.85);
+ stageImage(dataUrl);
+ stopCamera();
+}
+
+// ═══════════════════════════════════════════
+// QUICK REFERENCE — COPY
+// ═══════════════════════════════════════════
+function copyRef(){
+ const txt=`X32 QUICK REFERENCE CARD — Productions by Tubb LLC
+
+START OF SUNDAY: Console on first → wireless/computers → mains down → speakers LAST → recall Sunday scene → line check every mic → mute unused channels
+
+THE FOUR BUTTONS: SELECT picks channel | MUTE lit (red) = channel OFF | SOLO = headphones | Fader controls room volume | Wrong channels? Check layer buttons | Monitors? Sends on Fader, then exit
+
+SETTING GAIN: SELECT channel → SOLO with headphones → perform at real volume → green + touch yellow = good → red = turn gain down → Low Cut on for voices → fader near 0
+
+FEEDBACK / PROBLEM: Pull ringing mic fader → mute unused mics → don't grab main LR → no sound: mic on? mute off? fader up? right layer? → stay calm → call sound lead
+
+END OF SUNDAY: Mute mics, main LR down → speakers and amps OFF FIRST → wireless off, batteries out/charging → stop recording, remove USB → console off LAST
+
+NEVER DURING SERVICE: Don't save over Sunday scene | Don't change routing/Setup | Don't change gain without sound lead OK | Don't leave Sends on Fader on | Don't leave unused mics open | Livestream problem → tell sound lead
+
+Help: Sound lead ___ | Productions by Tubb: 478-442-2835 | productionsbytubb.com`;
+ try{
+  navigator.clipboard.writeText(txt);
+  document.getElementById('ref-copied').style.display='flex';
+  setTimeout(()=>document.getElementById('ref-copied').style.display='none',3000);
+ }catch(e){alert(txt);}
+}
+
+// ═══════════════════════════════════════════
+// TEACH MODE
+// ═══════════════════════════════════════════
+function toggleTeach(){
+ S.teachOpen=!S.teachOpen;
+ document.getElementById('tpanel').classList.toggle('open',S.teachOpen);
+ document.getElementById('ov').classList.toggle('on',S.teachOpen);
+ if(S.teachOpen){renderFaq('');setTimeout(()=>document.getElementById('teach-q').focus(),300);}
+}
+
+function renderFaq(query){
+ const q=query.toLowerCase().trim();
+ const items=q?FAQ.filter(f=>f.q.toLowerCase().includes(q)||f.a.toLowerCase().includes(q)):FAQ;
+ const list=document.getElementById('faqlist');
+ list.innerHTML=`<div class="tip-box"><strong>💡 Quick Tip</strong>Always recall the Sunday scene at the start of service — never save over it!</div>`+(items.length?items.map(f=>`<div class="faqi" onclick="this.classList.toggle('open')"><div class="faqq">${f.q}<span class="faqtog">▼</span></div><div class="faqa">${f.a}</div></div>`).join(''):'<p style="color:var(--m);font-size:13px;padding:10px 0;">No matches — try different keywords.</p>');
+}
+
+function filterFaq(v){renderFaq(v);}
+
+// ═══════════════════════════════════════════
+// MOBILE SIDEBAR
+// ═══════════════════════════════════════════
+function toggleSb(){
+ const sb=document.getElementById('sb');
+ sb.classList.toggle('open');
+ document.getElementById('ov').classList.toggle('on',sb.classList.contains('open'));
+}
+function closeSb(){document.getElementById('sb').classList.remove('open');if(!S.teachOpen)document.getElementById('ov').classList.remove('on');}
+function closeOv(){if(S.teachOpen)toggleTeach();else closeSb();}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+ renderFaq('');renderSO();
+ if(FB_READY && auth){
+  // Firebase Auth state observer — drives entire login/out flow
+  auth.onAuthStateChanged(async fbUser=>{
+   if(fbUser){
+    const u={id:fbUser.uid,name:fbUser.displayName||fbUser.email.split('@')[0],email:fbUser.email,role:'volunteer'};
+    await loginUser(u);
+   } else {
+    CU=null;
+    renderLoginScreen();
+   }
+  });
+ } else {
+  renderLoginScreen();
+ }
+ document.addEventListener('keydown',e=>{if(e.key==='t'&&e.altKey)toggleTeach();});
+});
+</script>
+</body>
+</html>
