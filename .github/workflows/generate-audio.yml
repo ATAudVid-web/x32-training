@@ -44,9 +44,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No audio changes to commit."
           else
-            git commit -m "Auto-generate lesson audio files via edge-tts
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_012hozyuQX365Ae9sFnU9ZmT"
+            MSG=$(printf 'Auto-generate lesson audio files via edge-tts\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>')
+            git commit -m "$MSG"
             git push
           fi
