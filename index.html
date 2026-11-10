@@ -439,6 +439,7 @@ textarea.nta::placeholder{color:var(--s3)}
     <button class="ni" onclick="go('help')"><span class="ni-icon">💬</span><span class="ni-label">Live Help Chat</span></button>
     <button class="ni" onclick="go('reference')"><span class="ni-icon">📋</span><span class="ni-label">Quick Reference</span></button>
     <button class="ni" onclick="go('signoff')"><span class="ni-icon">✅</span><span class="ni-label">Sign-Off Sheet</span></button>
+    <button class="ni" id="nav-admin" onclick="go('admin')" style="display:none"><span class="ni-icon">⚙️</span><span class="ni-label">Admin</span></button>
   </div>
 </nav>
 
@@ -646,6 +647,15 @@ textarea.nta::placeholder{color:var(--s3)}
       <button class="btn btn-p" onclick="copySo()">📋 Copy Sign-Off</button>
     </div>
     <div id="so-copied" style="display:none;margin-top:10px;" class="ca ca-g"><div class="ca-icon">✅</div><div class="ca-txt">Sign-off sheet copied! Paste it into an email or document.</div></div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="v-admin" class="view" style="display:none">
+  <div class="card" style="max-width:800px;margin:0 auto">
+    <h2 style="margin-top:0">👥 User Management</h2>
+    <p style="color:var(--text-muted,#888);font-size:.9rem">Only admins can assign roles. The first admin (marked OWNER) cannot be removed unless another admin has been assigned and has logged in.</p>
+    <div id="admin-user-list" style="margin-top:1.5rem">Loading users…</div>
   </div>
 </div>
 
@@ -996,7 +1006,15 @@ async function doAuth(){
    if(!name){setAuthStatus('Please enter your name.','var(--er)');btn.disabled=false;btn.textContent='Create Account →';return;}
    const uc=await auth.createUserWithEmailAndPassword(email,pass);
    await uc.user.updateProfile({displayName:name});
-   await db.collection('users').doc(uc.user.uid).set({name,email,role:'volunteer',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+   // Check if any admin exists — first registrant becomes admin
+   const _adminSnap = await db.collection('users').where('role','==','admin').limit(1).get();
+   const _isFirst = _adminSnap.empty;
+   await db.collection('users').doc(uc.user.uid).set({
+     name, email,
+     role: _isFirst ? 'admin' : 'user',
+     isFirstAdmin: _isFirst,
+     createdAt: firebase.firestore.FieldValue.serverTimestamp()
+   });
   } else {
    await auth.signInWithEmailAndPassword(email,pass);
   }
@@ -1076,10 +1094,15 @@ async function loginUser(u){
  if(FB_READY&&u.email){
   try{
    const snap=await db.collection('users').doc(u.id).get();
-   if(snap.exists)u.role=snap.data().role||'volunteer';
+   if(snap.exists)u.role=snap.data().role||'user';
+   // Stamp last login time (used for first-admin protection)
+   if(db) db.collection('users').doc(u.id).update({lastLogin: firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
   }catch(e){}
  }
  CU=u;
+ // Show admin nav only for admins
+ const _an=document.getElementById('nav-admin');
+ if(_an) _an.style.display=(CU.role==='admin')?'':'none';
  document.getElementById('v-login-screen').style.display='none';
  document.getElementById('shell').style.display='flex';
  // Load cloud data into local cache
@@ -1119,7 +1142,7 @@ function updateUserChip(){
     <div class="sb-uav">${initials(CU.name)}</div>
     <div style="flex:1;text-align:left">
      <div class="sb-uname">${CU.name}</div>
-     <div class="sb-uswitch">${CU.role==='instructor'?'👩‍🏫 Instructor · ':''}Tap to sign out</div>
+     <div class="sb-uswitch">${CU.role==='admin'?'🛡️ Admin · ':CU.role==='trainer'?'👩‍🏫 Trainer · ':CU.role==='lead'?'⭐ Lead · ':'🎓 Volunteer · '}Tap to sign out</div>
     </div>
    </button>
   </div>`;
@@ -1182,6 +1205,11 @@ function go(view,opts={}){
  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
  const el=document.getElementById('v-'+view);
  if(el)el.classList.add('on');
+ // Show admin nav only for admins
+ const _an=document.getElementById('nav-admin');
+ if(_an) _an.style.display=(CU&&CU.role==='admin')?'':'none';
+ // Load admin panel when navigating to it
+ if(view==='admin') renderAdminPanel();
  if(view==='home')renderHome();
  if(view==='lesson')renderLesson();
  if(view==='quiz')startQuiz(S.qlid);
@@ -1682,6 +1710,74 @@ document.addEventListener('DOMContentLoaded',()=>{
  }
  document.addEventListener('keydown',e=>{if(e.key==='t'&&e.altKey)toggleTeach();});
 });
+
+// ── Admin Panel ───────────────────────────────────────────────────────────
+async function renderAdminPanel(){
+  const el=document.getElementById('admin-user-list');
+  if(!el||!db){if(el)el.innerHTML='<p>Firebase not available.</p>';return;}
+  el.innerHTML='<em>Loading…</em>';
+  try{
+    const snap=await db.collection('users').orderBy('createdAt').get();
+    if(snap.empty){el.innerHTML='<p>No users yet.</p>';return;}
+    const roles=['user','lead','trainer','admin'];
+    let html=`<table style="width:100%;border-collapse:collapse;font-size:.9rem">
+      <thead><tr style="border-bottom:2px solid var(--s3,#ddd)">
+        <th style="text-align:left;padding:.5rem .75rem">Name</th>
+        <th style="text-align:left;padding:.5rem .75rem">Email</th>
+        <th style="text-align:left;padding:.5rem .75rem">Role</th>
+        <th style="text-align:left;padding:.5rem .75rem">Last Login</th>
+        <th style="padding:.5rem .75rem"></th>
+      </tr></thead><tbody>`;
+    snap.forEach(doc=>{
+      const u=doc.data();const uid=doc.id;
+      const ll=u.lastLogin?new Date(u.lastLogin.toMillis()).toLocaleDateString():'Never';
+      const isSelf=CU&&CU.id===uid;
+      const opts=roles.map(r=>`<option value="${r}"${u.role===r?' selected':''}>${r.charAt(0).toUpperCase()+r.slice(1)}</option>`).join('');
+      html+=`<tr style="border-bottom:1px solid var(--s3,#ddd)">
+        <td style="padding:.5rem .75rem">${u.name||'—'}${u.isFirstAdmin?` <span style="font-size:.7rem;background:#f59e0b;color:#fff;border-radius:3px;padding:1px 5px">OWNER</span>`:''}</td>
+        <td style="padding:.5rem .75rem;opacity:.65">${u.email||''}</td>
+        <td style="padding:.5rem .75rem"><select id="role-sel-${uid}" style="padding:.25rem .5rem;border-radius:6px;border:1px solid var(--s3,#ddd);background:var(--bg,#fff);color:var(--t,#000)">${opts}</select></td>
+        <td style="padding:.5rem .75rem;opacity:.65">${ll}</td>
+        <td style="padding:.5rem .75rem"><button onclick="assignRole('${uid}','${u.isFirstAdmin?'1':'0'}')" style="padding:.25rem .75rem;border-radius:6px;border:none;background:var(--m,#5b7cff);color:#fff;cursor:pointer;font-size:.85rem">${isSelf?'Update (you)':'Save'}</button></td>
+      </tr>`;
+    });
+    html+='</tbody></table>';
+    el.innerHTML=html;
+  }catch(e){el.innerHTML=`<p style="color:red">Error loading users: ${e.message}</p>`;}
+}
+
+async function assignRole(uid,isFirstAdminFlag){
+  const sel=document.getElementById('role-sel-'+uid);
+  if(!sel||!db)return;
+  const newRole=sel.value;
+  // Protect first admin
+  if(isFirstAdminFlag==='1'&&newRole!=='admin'){
+    const otherAdmins=await db.collection('users')
+      .where('role','==','admin')
+      .where('isFirstAdmin','==',false)
+      .limit(1).get();
+    const otherLoggedIn=!otherAdmins.empty&&otherAdmins.docs.some(d=>d.data().lastLogin);
+    if(!otherLoggedIn){
+      alert('The owner (first admin) cannot lose admin role until another admin has been assigned and has logged in.');
+      sel.value='admin';return;
+    }
+  }
+  // Prevent removing the last admin
+  if(newRole!=='admin'){
+    const adminSnap=await db.collection('users').where('role','==','admin').get();
+    const otherAdmins=adminSnap.docs.filter(d=>d.id!==uid);
+    if(otherAdmins.length===0){
+      alert('Cannot remove the last admin. Assign another admin first.');
+      sel.value='admin';return;
+    }
+  }
+  try{
+    await db.collection('users').doc(uid).update({role:newRole});
+    if(CU&&uid===CU.id){CU.role=newRole;updateSb();}
+    alert('Role updated to '+newRole);
+    renderAdminPanel();
+  }catch(e){alert('Error: '+e.message);}
+}
 </script>
 </body>
 </html>
