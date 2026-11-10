@@ -1305,14 +1305,16 @@ function _parseVTT(raw){
 
 // Map cues → charOffsets in fullText using first few words, then poll audio.currentTime
 function _ttsStartVtt(audio,cues,fullText){
- const ftL=fullText.toLowerCase();
+ // Normalize both sides: strip non-word/non-space chars so "&" matches "" space
+ const norm=s=>s.replace(/[^\w\s]/g,' ').replace(/\s+/g,' ').toLowerCase();
+ const ftNorm=norm(fullText);
  let pos=0;
  const mapped=cues.map(c=>{
-  // Search using the first 4+ words of the cue text (cues are sentence-level)
-  const words=c.text.replace(/<[^>]+>/g,'').replace(/[^\w\s]/g,' ').trim().split(/\s+/);
-  const needle=words.slice(0,Math.min(4,words.length)).join(' ').toLowerCase();
-  const found=ftL.indexOf(needle,pos);
+  const words=norm(c.text).trim().split(/\s+/);
+  const needle=words.slice(0,Math.min(4,words.length)).join(' ');
+  const found=ftNorm.indexOf(needle,pos);
   if(found!==-1)pos=found+needle.length;
+  // The normalized offset is very close to the original offset (non-word chars → 1 space each)
   return{...c,off:found!==-1?found:pos};
  });
  _ttsVttInterval=setInterval(()=>{
