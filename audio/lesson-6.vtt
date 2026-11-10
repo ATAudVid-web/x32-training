@@ -1,1 +1,80 @@
-WEBVTT
+1
+00:00:00,100 --> 00:00:02,162
+Stage Monitors.
+
+2
+00:00:02,112 --> 00:00:06,487
+Learn Sends on Fader mode and how to respond to monitor requests.
+
+3
+00:00:06,487 --> 00:00:11,787
+Stage monitors (wedges or in-ears) are completely separate from the main room mix.
+
+4
+00:00:11,787 --> 00:00:16,425
+You can adjust someone's monitor without changing what the congregation hears.
+
+5
+00:00:16,425 --> 00:00:18,825
+Using Sends on Fader.
+
+6
+00:00:18,825 --> 00:00:22,062
+Press Sends on Fader button: It lights up.
+
+7
+00:00:22,062 --> 00:00:26,462
+Left faders now control monitor sends, NOT the main room mix.
+
+8
+00:00:26,462 --> 00:00:33,862
+Press SELECT on the monitor bus: On the right side, select which monitor mix you're adjusting (Bus 1, 2, etc.).
+
+9
+00:00:33,862 --> 00:00:39,862
+Adjust the left faders: Each channel's fader now = how loud that source is in the selected monitor.
+
+10
+00:00:39,862 --> 00:00:41,737
+Small moves.
+
+11
+00:00:41,737 --> 00:00:45,525
+Press Sends on Fader again to EXIT: Light goes off.
+
+12
+00:00:45,525 --> 00:00:48,125
+Faders go back to room mix.
+
+13
+00:00:48,125 --> 00:00:50,450
+ALWAYS exit when done.
+
+14
+00:00:50,450 --> 00:00:57,700
+⚠️ CRITICAL: If Sends on Fader is still lit and you think you're mixing the room, you're secretly changing someone's monitor.
+
+15
+00:00:57,700 --> 00:01:01,075
+ALWAYS check that the button is off before mixing.
+
+16
+00:01:01,075 --> 00:01:04,062
+Monitor Requests — Translations.
+
+17
+00:01:04,062 --> 00:01:09,637
+When someone says I need more me., Raise their own mic or instrument in their personal monitor mix.
+
+18
+00:01:09,637 --> 00:01:14,912
+When someone says I can't hear the keys., Raise the keyboard channel in their monitor mix.
+
+19
+00:01:14,912 --> 00:01:21,387
+When someone says It's too loud in my monitor., Lower the loudest channel or pull the whole monitor bus down slightly.
+
+20
+00:01:21,387 --> 00:01:27,837
+When someone says My monitor is ringing., Lower their OWN mic in their monitor mix — that's almost always the cause.
+
