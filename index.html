@@ -353,6 +353,19 @@ textarea.nta::placeholder{color:var(--s3)}
 </head>
 <body>
 
+<!-- TTS Player Bar -->
+<div id="tts-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:var(--s1);border-top:2px solid var(--ac);padding:.6rem 1rem;align-items:center;gap:.75rem;box-shadow:0 -4px 20px rgba(0,0,0,.3)">
+  <span id="tts-title" style="flex:1;font-size:.85rem;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🔊 Reading lesson…</span>
+  <select id="tts-speed" onchange="ttsSetSpeed()" style="padding:.2rem .4rem;border-radius:6px;border:1px solid var(--s3);background:var(--s2);color:var(--t);font-size:.8rem">
+    <option value="0.7">Slow</option>
+    <option value="0.9" selected>Normal</option>
+    <option value="1.2">Fast</option>
+    <option value="1.5">Very Fast</option>
+  </select>
+  <button onclick="ttsPause()" id="tts-pause-btn" style="padding:.3rem .8rem;border-radius:6px;border:none;background:var(--ac);color:#fff;cursor:pointer;font-size:.85rem">⏸ Pause</button>
+  <button onclick="ttsStop()" style="padding:.3rem .8rem;border-radius:6px;border:none;background:var(--er);color:#fff;cursor:pointer;font-size:.85rem">⏹ Stop</button>
+</div>
+
 <!-- LOGIN SCREEN -->
 <div id="v-login-screen" class="login-wrap">
   <div class="login-box">
@@ -1181,6 +1194,10 @@ function svS(id,sc,tot){
 }
 function mkDone(id){const p=gP();p[id]=true;sP(p)}
 
+// Review count helpers (per-user)
+function gRC(){if(!CU)return{};try{return JSON.parse(localStorage.getItem('x32rc_'+CU.id)||'{}')}catch{return{}}}
+function sRC(d){if(!CU)return;localStorage.setItem('x32rc_'+CU.id,JSON.stringify(d));syncProgress();}
+
 let _syncTimer=null;
 function syncProgress(){
  if(!FB_READY||!CU)return;
@@ -1188,7 +1205,7 @@ function syncProgress(){
  _syncTimer=setTimeout(async()=>{
   try{
    await db.collection('progress').doc(CU.id).set({
-    lessons:gP(),scores:gS(),notes:gN(),
+    lessons:gP(),scores:gS(),notes:gN(),reviewCounts:gRC(),
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
    },{merge:true});
   }catch(e){}
@@ -1196,10 +1213,72 @@ function syncProgress(){
 }
 
 // ═══════════════════════════════════════════
+// TEXT-TO-SPEECH
+let _ttsUtts=[];
+function lessonToText(id){
+ const l=LESSONS.find(x=>x.id===id);
+ if(!l)return'';
+ let txt=l.title+'. ';
+ (l.sec||[]).forEach(s=>{
+  if(s.h)txt+=s.h+'. ';
+  if(s.p)txt+=s.p+' ';
+  if(s.ul)(s.ul||[]).forEach(i=>{txt+=i+'. ';});
+  if(s.tip)txt+='Tip: '+s.tip+' ';
+  if(s.warn)txt+='Warning: '+s.warn+' ';
+  if(s.steps)(s.steps||[]).forEach((st,i)=>{txt+='Step '+(i+1)+': '+st+'. ';});
+ });
+ return txt.trim();
+}
+function ttsRead(id){
+ if(!window.speechSynthesis)return alert('Text-to-speech is not supported in your browser.');
+ speechSynthesis.cancel();
+ const txt=lessonToText(id);
+ if(!txt)return;
+ const l=LESSONS.find(x=>x.id===id);
+ document.getElementById('tts-title').textContent='🔊 '+(l?l.title:'Reading…');
+ const spd=parseFloat(document.getElementById('tts-speed').value||'1');
+ // Split into chunks to avoid browser TTS cutoff bug
+ const chunks=txt.match(/[^.!?]+[.!?]+/g)||[txt];
+ _ttsUtts=chunks.map(c=>{
+  const u=new SpeechSynthesisUtterance(c.trim());
+  u.rate=spd;u.lang='en-US';return u;
+ });
+ _ttsUtts[_ttsUtts.length-1].onend=()=>{ttsHideBar();};
+ ttsShowBar();
+ document.getElementById('tts-pause-btn').textContent='⏸ Pause';
+ _ttsUtts.forEach(u=>speechSynthesis.speak(u));
+}
+function ttsPause(){
+ if(!window.speechSynthesis)return;
+ const btn=document.getElementById('tts-pause-btn');
+ if(speechSynthesis.paused){speechSynthesis.resume();btn.textContent='⏸ Pause';}
+ else{speechSynthesis.pause();btn.textContent='▶ Resume';}
+}
+function ttsStop(){
+ if(window.speechSynthesis)speechSynthesis.cancel();
+ ttsHideBar();
+}
+function ttsSetSpeed(){
+ if(!window.speechSynthesis)return;
+ // Re-read current lesson at new speed if actively speaking
+ if(speechSynthesis.speaking&&S.lid){ttsRead(S.lid);}
+}
+function ttsShowBar(){
+ const b=document.getElementById('tts-bar');
+ if(b)b.style.display='flex';
+}
+function ttsHideBar(){
+ const b=document.getElementById('tts-bar');
+ if(b)b.style.display='none';
+}
+
+// ═══════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════
 function go(view,opts={}){
  S.view=view;
+ if(window.speechSynthesis){speechSynthesis.cancel();}
+ ttsHideBar();
  if(opts.lid!==undefined)S.lid=opts.lid;
  if(opts.qlid!==undefined)S.qlid=opts.qlid;
  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
@@ -1304,12 +1383,15 @@ function renderLesson(){
      <div class="lhdr-meta">
       ${done?'<span class="tag tag-g">✅ Completed</span>':'<span class="tag tag-b">In Progress</span>'}
       ${sc?`<span class="tag tag-w">Quiz: ${sc.pct}%</span>`:''}
+      ${(gRC()[l.id])?`<span class="tag" style="background:var(--s3)">📋 Reviewed ${gRC()[l.id]}×</span>`:''}
      </div>
     </div>
    </div>
    <div class="psteps">${steps}</div>
    <div class="brow">
+    <button class="btn btn-o btn-sm" onclick="ttsRead(${l.id})" title="Read lesson aloud">🔊 Listen</button>
     ${!done?`<button class="btn btn-g" onclick="doneLesson(${l.id})">✅ Mark Complete</button>`:''}
+    ${done?`<button class="btn btn-o btn-sm" onclick="recordReview(${l.id},event)">📋 Review Again</button>`:''}
     <button class="btn btn-p" onclick="go('quiz',{qlid:${l.id}})">📝 Take Quiz</button>
     <button class="btn btn-o btn-sm" onclick="toggleTeach()">🎓 Teach Mode</button>
    </div>
@@ -1337,7 +1419,20 @@ function renderSec(sec){
  return'';
 }
 
-function doneLesson(id){mkDone(id);renderLesson();updateSb();renderHome();}
+function doneLesson(id){mkDone(id);recordReview(id,null,true);renderLesson();updateSb();renderHome();}
+
+function recordReview(id,evt,silent){
+ // Increment per-user count
+ const rc=gRC();rc[id]=(rc[id]||0)+1;sRC(rc);
+ // Increment global lesson stat in Firestore
+ if(FB_READY&&db){
+  db.collection('lessonStats').doc(String(id)).set(
+   {reviews:firebase.firestore.FieldValue.increment(1),lessonId:id},
+   {merge:true}
+  ).catch(()=>{});
+ }
+ if(!silent){renderLesson();updateSb();}
+}
 
 // ═══════════════════════════════════════════
 // QUIZ ENGINE
@@ -1743,7 +1838,42 @@ async function renderAdminPanel(){
     });
     html+='</tbody></table>';
     el.innerHTML=html;
+    // Load lesson review stats below user table
+    renderLessonStats();
   }catch(e){el.innerHTML=`<p style="color:red">Error loading users: ${e.message}</p>`;}
+}
+
+async function renderLessonStats(){
+  const el=document.getElementById('admin-user-list');
+  if(!el)return;
+  let statsEl=document.getElementById('admin-lesson-stats');
+  if(!statsEl){
+    statsEl=document.createElement('div');
+    statsEl.id='admin-lesson-stats';
+    statsEl.style='margin-top:2rem';
+    el.parentNode.appendChild(statsEl);
+  }
+  statsEl.innerHTML='<h3 style="margin-bottom:.75rem">📊 Lesson Review Stats</h3><em>Loading…</em>';
+  if(!FB_READY||!db){statsEl.innerHTML+='<p>Firebase not available.</p>';return;}
+  try{
+    const snap=await db.collection('lessonStats').get();
+    const statsMap={};
+    snap.forEach(d=>{statsMap[d.id]=d.data().reviews||0;});
+    let h=`<table style="width:100%;border-collapse:collapse;font-size:.9rem">
+      <thead><tr style="border-bottom:2px solid var(--s3,#ddd)">
+        <th style="text-align:left;padding:.5rem .75rem">Lesson</th>
+        <th style="text-align:right;padding:.5rem .75rem">Total Reviews</th>
+      </tr></thead><tbody>`;
+    LESSONS.forEach(l=>{
+      const cnt=statsMap[String(l.id)]||0;
+      h+=`<tr style="border-bottom:1px solid var(--s3,#ddd)">
+        <td style="padding:.5rem .75rem">${l.title}</td>
+        <td style="text-align:right;padding:.5rem .75rem;font-weight:bold">${cnt}</td>
+      </tr>`;
+    });
+    h+='</tbody></table>';
+    statsEl.innerHTML='<h3 style="margin-bottom:.75rem">📊 Lesson Review Stats</h3>'+h;
+  }catch(e){statsEl.innerHTML+='<p style="color:red">Error: '+e.message+'</p>';}
 }
 
 async function assignRole(uid,isFirstAdminFlag){
