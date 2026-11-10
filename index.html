@@ -1216,51 +1216,81 @@ function syncProgress(){
 // TEXT-TO-SPEECH
 let _ttsUtts=[];
 function lessonToText(id){
- const l=LESSONS.find(x=>x.id===id);
+ const l=L.find(x=>x.id===id);
  if(!l)return'';
- let txt=l.title+'. ';
+ let parts=[l.title+'.'];
+ if(l.summary)parts.push(l.summary);
  (l.sec||[]).forEach(s=>{
-  if(s.h)txt+=s.h+'. ';
-  if(s.p)txt+=s.p+' ';
-  if(s.ul)(s.ul||[]).forEach(i=>{txt+=i+'. ';});
-  if(s.tip)txt+='Tip: '+s.tip+' ';
-  if(s.warn)txt+='Warning: '+s.warn+' ';
-  if(s.steps)(s.steps||[]).forEach((st,i)=>{txt+='Step '+(i+1)+': '+st+'. ';});
+  if(!s||!s.t)return;
+  if(s.h)parts.push(s.h+'.');
+  if(s.c)parts.push(s.c);
+  if(s.t==='compare'&&s.a&&s.b){
+   parts.push('Comparing '+s.a.title+' and '+s.b.title+'.');
+   if(s.a.items)(s.a.items||[]).forEach(i=>parts.push(s.a.title+': '+i));
+   if(s.b.items)(s.b.items||[]).forEach(i=>parts.push(s.b.title+': '+i));
+  }
+  (s.items||[]).forEach(it=>{
+   if(typeof it==='string'){parts.push(it);}
+   else if(it.r)parts.push(it.r+(it.d?': '+it.d:'')+'.');
+   else if(it.term)parts.push(it.term+(it.def?': '+it.def:'')+'.');
+   else if(it.title)parts.push(it.title+(it.desc?': '+it.desc:'')+'.');
+   else if(it.p)parts.push(it.p+(it.c?': '+it.c:'')+'.');
+   else if(it.says)parts.push('When someone says '+it.says.replace(/^"|"$/g,'')+', '+(it.do||'')+'.');
+  });
  });
- return txt.trim();
+ return parts.join(' ').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
 }
+let _ttsAudio=null;
 function ttsRead(id){
- if(!window.speechSynthesis)return alert('Text-to-speech is not supported in your browser.');
+ const l=L.find(x=>x.id===id);
+ if(!l)return;
+ document.getElementById('tts-title').textContent='🔊 '+l.title;
+ ttsShowBar();
+ document.getElementById('tts-pause-btn').textContent='⏸ Pause';
+ // Try pre-generated MP3 first
+ const mp3='audio/lesson-'+id+'.mp3';
+ const spd=parseFloat(document.getElementById('tts-speed').value||'0.9');
+ if(_ttsAudio){_ttsAudio.pause();_ttsAudio=null;}
+ const a=new Audio(mp3);
+ a.onerror=()=>{ _ttsAudio=null; _ttsFallback(id,l,spd); };
+ a.onended=()=>{ ttsHideBar(); _ttsAudio=null; };
+ a.playbackRate=Math.min(Math.max(spd,0.5),2.0);
+ _ttsAudio=a;
+ a.play().catch(()=>{ _ttsAudio=null; _ttsFallback(id,l,spd); });
+}
+function _ttsFallback(id,l,spd){
+ if(!window.speechSynthesis)return;
  speechSynthesis.cancel();
  const txt=lessonToText(id);
  if(!txt)return;
- const l=LESSONS.find(x=>x.id===id);
- document.getElementById('tts-title').textContent='🔊 '+(l?l.title:'Reading…');
- const spd=parseFloat(document.getElementById('tts-speed').value||'1');
- // Split into chunks to avoid browser TTS cutoff bug
  const chunks=txt.match(/[^.!?]+[.!?]+/g)||[txt];
  _ttsUtts=chunks.map(c=>{
   const u=new SpeechSynthesisUtterance(c.trim());
   u.rate=spd;u.lang='en-US';return u;
  });
  _ttsUtts[_ttsUtts.length-1].onend=()=>{ttsHideBar();};
- ttsShowBar();
- document.getElementById('tts-pause-btn').textContent='⏸ Pause';
  _ttsUtts.forEach(u=>speechSynthesis.speak(u));
 }
 function ttsPause(){
+ if(_ttsAudio){
+  if(_ttsAudio.paused){_ttsAudio.play();document.getElementById('tts-pause-btn').textContent='⏸ Pause';}
+  else{_ttsAudio.pause();document.getElementById('tts-pause-btn').textContent='▶ Resume';}
+  return;
+ }
  if(!window.speechSynthesis)return;
  const btn=document.getElementById('tts-pause-btn');
  if(speechSynthesis.paused){speechSynthesis.resume();btn.textContent='⏸ Pause';}
  else{speechSynthesis.pause();btn.textContent='▶ Resume';}
 }
 function ttsStop(){
+ if(_ttsAudio){_ttsAudio.pause();_ttsAudio=null;}
  if(window.speechSynthesis)speechSynthesis.cancel();
  ttsHideBar();
 }
 function ttsSetSpeed(){
+ const spd=parseFloat(document.getElementById('tts-speed').value||'0.9');
+ if(_ttsAudio){_ttsAudio.playbackRate=Math.min(Math.max(spd,0.5),2.0);return;}
  if(!window.speechSynthesis)return;
- // Re-read current lesson at new speed if actively speaking
  if(speechSynthesis.speaking&&S.lid){ttsRead(S.lid);}
 }
 function ttsShowBar(){
@@ -1864,7 +1894,7 @@ async function renderLessonStats(){
         <th style="text-align:left;padding:.5rem .75rem">Lesson</th>
         <th style="text-align:right;padding:.5rem .75rem">Total Reviews</th>
       </tr></thead><tbody>`;
-    LESSONS.forEach(l=>{
+    L.forEach(l=>{
       const cnt=statsMap[String(l.id)]||0;
       h+=`<tr style="border-bottom:1px solid var(--s3,#ddd)">
         <td style="padding:.5rem .75rem">${l.title}</td>

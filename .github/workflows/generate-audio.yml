@@ -1,0 +1,52 @@
+name: Generate Lesson Audio
+
+# Runs automatically when index.html changes (lesson data may have changed),
+# or manually from the Actions tab.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'index.html'
+    branches:
+      - main
+
+jobs:
+  generate-audio:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to commit the MP3s back
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js (for lesson data parsing)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install edge-tts
+        run: pip install edge-tts
+
+      - name: Generate MP3 audio files
+        run: python3 scripts/generate_audio.py
+
+      - name: Commit and push audio files
+        run: |
+          git config user.name "GitHub Actions [bot]"
+          git config user.email "actions@github.com"
+          git add audio/
+          if git diff --staged --quiet; then
+            echo "No audio changes to commit."
+          else
+            git commit -m "Auto-generate lesson audio files via edge-tts
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_012hozyuQX365Ae9sFnU9ZmT"
+            git push
+          fi
