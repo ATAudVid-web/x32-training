@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-Generate MP3 audio files for X32 Training Hub lessons using edge-tts.
+Generate MP3 + WebVTT audio files for X32 Training Hub lessons using edge-tts.
 
 Usage:
     pip install edge-tts
     python3 scripts/generate_audio.py
 
-Generates: audio/lesson-{id}.mp3 for each lesson (1-8)
+Generates:
+  audio/lesson-{id}.mp3  — high-quality neural TTS audio
+  audio/lesson-{id}.vtt  — word-level timing for karaoke highlighting
 
 Voice: en-US-GuyNeural (Microsoft neural TTS, free via edge-tts)
 """
@@ -124,14 +126,49 @@ process.stdout.write(JSON.stringify(L));
     return None
 
 
-async def generate_mp3(lesson_id, text, output_path):
-    """Generate a single MP3 file using edge-tts."""
+def _ms_to_vtt(ms):
+    """Convert milliseconds to WebVTT timestamp HH:MM:SS.mmm"""
+    s_total = ms // 1000
+    ms_rem = ms % 1000
+    h = s_total // 3600
+    m = (s_total % 3600) // 60
+    s = s_total % 60
+    return f"{h:02d}:{m:02d}:{s:02d}.{ms_rem:03d}"
+
+
+async def generate_audio(lesson_id, text, output_dir):
+    """Generate MP3 + WebVTT files using edge-tts streaming API."""
     import edge_tts
 
+    mp3_path = os.path.join(output_dir, f"lesson-{lesson_id}.mp3")
+    vtt_path = os.path.join(output_dir, f"lesson-{lesson_id}.vtt")
+
     communicate = edge_tts.Communicate(text, VOICE)
-    await communicate.save(output_path)
-    size_kb = os.path.getsize(output_path) // 1024
-    print(f"  ✓ lesson-{lesson_id}.mp3 ({size_kb} KB, {len(text)} chars)")
+
+    mp3_chunks = []
+    vtt_lines = ["WEBVTT", ""]  # VTT header
+
+    async for chunk in communicate:
+        if chunk["type"] == "audio":
+            mp3_chunks.append(chunk["data"])
+        elif chunk["type"] == "WordBoundary":
+            # offset and duration are in 100-nanosecond units
+            start_ms = chunk["offset"] // 10000
+            dur_ms = chunk["duration"] // 10000
+            end_ms = start_ms + dur_ms
+            vtt_lines.append(f"{_ms_to_vtt(start_ms)} --> {_ms_to_vtt(end_ms)}")
+            vtt_lines.append(chunk["text"])
+            vtt_lines.append("")
+
+    with open(mp3_path, "wb") as f:
+        for c in mp3_chunks:
+            f.write(c)
+    with open(vtt_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(vtt_lines))
+
+    size_kb = os.path.getsize(mp3_path) // 1024
+    cue_count = sum(1 for l in vtt_lines if " --> " in l)
+    print(f"  ✓ lesson-{lesson_id}.mp3 ({size_kb} KB, {len(text)} chars) + VTT ({cue_count} cues)")
 
 
 async def main():
@@ -160,10 +197,9 @@ async def main():
         lid = lesson["id"]
         text = lesson_to_text(lesson)
         total_chars += len(text)
-        output_path = os.path.join(OUTPUT_DIR, f"lesson-{lid}.mp3")
-        await generate_mp3(lid, text, output_path)
+        await generate_audio(lid, text, OUTPUT_DIR)
 
-    print(f"\nDone! {len(lessons)} MP3s generated ({total_chars} total chars)")
+    print(f"\nDone! {len(lessons)} MP3+VTT pairs generated ({total_chars} total chars)")
     print(f"Files saved to: {OUTPUT_DIR}/")
 
 

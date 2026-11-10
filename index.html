@@ -349,21 +349,28 @@ textarea.nta::placeholder{color:var(--s3)}
 /* Loading state */
 .loading-spin{display:inline-block;width:18px;height:18px;border:2px solid var(--s3);border-top-color:var(--ac);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* TTS word highlighting */
+#tts-words{display:none;max-height:110px;overflow-y:auto;line-height:1.75;font-size:.88rem;padding:.4rem .6rem;background:rgba(0,0,0,.25);border-radius:7px;width:100%;box-sizing:border-box;word-spacing:.08em;scroll-behavior:smooth}
+.tw{border-radius:3px;padding:0 1px;transition:background .08s,color .08s}
+.tw.cur{background:#ffe066;color:#111;border-radius:3px;padding:0 2px}
 </style>
 </head>
 <body>
 
 <!-- TTS Player Bar -->
-<div id="tts-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:var(--s1);border-top:2px solid var(--ac);padding:.6rem 1rem;align-items:center;gap:.75rem;box-shadow:0 -4px 20px rgba(0,0,0,.3)">
-  <span id="tts-title" style="flex:1;font-size:.85rem;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🔊 Reading lesson…</span>
-  <select id="tts-speed" onchange="ttsSetSpeed()" style="padding:.2rem .4rem;border-radius:6px;border:1px solid var(--s3);background:var(--s2);color:var(--t);font-size:.8rem">
-    <option value="0.7">Slow</option>
-    <option value="0.9" selected>Normal</option>
-    <option value="1.2">Fast</option>
-    <option value="1.5">Very Fast</option>
-  </select>
-  <button onclick="ttsPause()" id="tts-pause-btn" style="padding:.3rem .8rem;border-radius:6px;border:none;background:var(--ac);color:#fff;cursor:pointer;font-size:.85rem">⏸ Pause</button>
-  <button onclick="ttsStop()" style="padding:.3rem .8rem;border-radius:6px;border:none;background:var(--er);color:#fff;cursor:pointer;font-size:.85rem">⏹ Stop</button>
+<div id="tts-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:var(--s1);border-top:2px solid var(--ac);padding:.6rem 1rem .5rem;flex-direction:column;gap:.5rem;box-shadow:0 -4px 20px rgba(0,0,0,.3)">
+  <div id="tts-words"></div>
+  <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+    <span id="tts-title" style="flex:1;font-size:.85rem;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🔊 Reading lesson…</span>
+    <select id="tts-speed" onchange="ttsSetSpeed()" style="padding:.2rem .4rem;border-radius:6px;border:1px solid var(--s3);background:var(--s2);color:var(--t);font-size:.8rem">
+      <option value="0.7">Slow</option>
+      <option value="0.9" selected>Normal</option>
+      <option value="1.2">Fast</option>
+      <option value="1.5">Very Fast</option>
+    </select>
+    <button onclick="ttsPause()" id="tts-pause-btn" style="padding:.3rem .8rem;border-radius:6px;border:none;background:var(--ac);color:#fff;cursor:pointer;font-size:.85rem">⏸ Pause</button>
+    <button onclick="ttsStop()" style="padding:.3rem .8rem;border-radius:6px;border:none;background:var(--er);color:#fff;cursor:pointer;font-size:.85rem">⏹ Stop</button>
+  </div>
 </div>
 
 <!-- LOGIN SCREEN -->
@@ -1240,37 +1247,130 @@ function lessonToText(id){
  });
  return parts.join(' ').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
 }
-let _ttsAudio=null;
+// ── TTS state ──────────────────────────────────────────
+let _ttsAudio=null,_ttsUtts=[],_ttsWordMap=[],_ttsCurWord=-1,_ttsVttInterval=null;
+
+// Build word-span HTML and populate _ttsWordMap [{start,end}]
+function _wrapWords(text){
+ _ttsWordMap=[];
+ let idx=0;
+ // escape HTML entities inside each word so we don't break markup
+ const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+ return text.replace(/\S+/g,(word,offset)=>{
+  _ttsWordMap.push({start:offset,end:offset+word.length});
+  return '<span class="tw" id="tw'+idx+++'">' +esc(word)+ '</span>';
+ });
+}
+
+// Highlight the word that contains charOffset in the original text
+function _ttsHlAt(charOffset){
+ for(let i=0;i<_ttsWordMap.length;i++){
+  const w=_ttsWordMap[i];
+  if(charOffset>=w.start&&charOffset<w.end){
+   if(i===_ttsCurWord)return;
+   _ttsCurWord=i;
+   document.querySelectorAll('.tw.cur').forEach(el=>el.classList.remove('cur'));
+   const el=document.getElementById('tw'+i);
+   if(el){el.classList.add('cur');el.scrollIntoView({behavior:'smooth',block:'nearest'});}
+   return;
+  }
+ }
+}
+
+// Clear all highlight state and stop VTT polling
+function _ttsClearHl(){
+ _ttsCurWord=-1;
+ if(_ttsVttInterval){clearInterval(_ttsVttInterval);_ttsVttInterval=null;}
+ document.querySelectorAll('.tw.cur').forEach(el=>el.classList.remove('cur'));
+ const w=document.getElementById('tts-words');
+ if(w){w.style.display='none';w.innerHTML='';}
+}
+
+// Parse a WebVTT string → [{start,end,text}] (times in seconds)
+function _parseVTT(raw){
+ const cues=[];
+ const lines=raw.split('\n');
+ const toSec=t=>{const p=t.split(':').map(parseFloat);return p[0]*3600+p[1]*60+p[2];};
+ for(let i=0;i<lines.length;i++){
+  const m=lines[i].match(/^(\d+:\d+:\d+\.\d+)\s*-->\s*(\d+:\d+:\d+\.\d+)/);
+  if(m){
+   const txt=(lines[i+1]||'').trim();
+   if(txt)cues.push({start:toSec(m[1]),end:toSec(m[2]),text:txt});
+  }
+ }
+ return cues;
+}
+
+// Map VTT cues → charOffsets in fullText, then poll audio.currentTime
+function _ttsStartVtt(audio,cues,fullText){
+ let pos=0;
+ const mapped=cues.map(c=>{
+  // strip punctuation to search for the core word
+  const bare=c.text.replace(/[^\w]/g,'').toLowerCase();
+  let found=-1;
+  for(let i=pos;i<fullText.length-bare.length+1;i++){
+   if(fullText.slice(i,i+bare.length).toLowerCase()===bare){found=i;break;}
+  }
+  if(found!==-1)pos=found+bare.length;
+  return{...c,off:found!==-1?found:pos};
+ });
+ _ttsVttInterval=setInterval(()=>{
+  if(!audio||audio.paused)return;
+  const t=audio.currentTime;
+  // find the last cue whose start <= t
+  let best=-1;
+  for(let i=0;i<mapped.length;i++){if(mapped[i].start<=t)best=i;else break;}
+  if(best>=0)_ttsHlAt(mapped[best].off);
+ },80);
+}
+
+// ── Core TTS functions ─────────────────────────────────
 function ttsRead(id){
  const l=L.find(x=>x.id===id);
  if(!l)return;
  document.getElementById('tts-title').textContent='🔊 '+l.title;
- ttsShowBar();
  document.getElementById('tts-pause-btn').textContent='⏸ Pause';
- // Try pre-generated MP3 first
+ _ttsClearHl();
+ // Populate word display
+ const txt=lessonToText(id);
+ const wordsEl=document.getElementById('tts-words');
+ if(wordsEl&&txt){wordsEl.innerHTML=_wrapWords(txt);wordsEl.style.display='block';}
+ ttsShowBar();
  const mp3='audio/lesson-'+id+'.mp3';
  const spd=parseFloat(document.getElementById('tts-speed').value||'0.9');
  if(_ttsAudio){_ttsAudio.pause();_ttsAudio=null;}
  const a=new Audio(mp3);
- a.onerror=()=>{ _ttsAudio=null; _ttsFallback(id,l,spd); };
- a.onended=()=>{ ttsHideBar(); _ttsAudio=null; };
+ a.onerror=()=>{_ttsAudio=null;_ttsFallback(id,l,spd);};
+ a.onended=()=>{_ttsAudio=null;_ttsClearHl();ttsHideBar();};
  a.playbackRate=Math.min(Math.max(spd,0.5),2.0);
  _ttsAudio=a;
- a.play().catch(()=>{ _ttsAudio=null; _ttsFallback(id,l,spd); });
+ // Try loading VTT subtitle file for word-level sync
+ fetch('audio/lesson-'+id+'.vtt')
+  .then(r=>r.ok?r.text():null)
+  .then(vttRaw=>{if(vttRaw&&_ttsAudio===a){const cues=_parseVTT(vttRaw);if(cues.length)_ttsStartVtt(a,cues,txt);}})
+  .catch(()=>{});
+ a.play().catch(()=>{_ttsAudio=null;_ttsFallback(id,l,spd);});
 }
+
 function _ttsFallback(id,l,spd){
  if(!window.speechSynthesis)return;
  speechSynthesis.cancel();
  const txt=lessonToText(id);
  if(!txt)return;
  const chunks=txt.match(/[^.!?]+[.!?]+/g)||[txt];
+ let chunkOff=0;
  _ttsUtts=chunks.map(c=>{
+  const off=chunkOff;
+  chunkOff+=c.length+1;
   const u=new SpeechSynthesisUtterance(c.trim());
-  u.rate=spd;u.lang='en-US';return u;
+  u.rate=spd;u.lang='en-US';
+  u.onboundary=(e)=>{if(e.name==='word')_ttsHlAt(off+e.charIndex);};
+  return u;
  });
- _ttsUtts[_ttsUtts.length-1].onend=()=>{ttsHideBar();};
+ _ttsUtts[_ttsUtts.length-1].onend=()=>{_ttsClearHl();ttsHideBar();};
  _ttsUtts.forEach(u=>speechSynthesis.speak(u));
 }
+
 function ttsPause(){
  if(_ttsAudio){
   if(_ttsAudio.paused){_ttsAudio.play();document.getElementById('tts-pause-btn').textContent='⏸ Pause';}
@@ -1282,17 +1382,21 @@ function ttsPause(){
  if(speechSynthesis.paused){speechSynthesis.resume();btn.textContent='⏸ Pause';}
  else{speechSynthesis.pause();btn.textContent='▶ Resume';}
 }
+
 function ttsStop(){
  if(_ttsAudio){_ttsAudio.pause();_ttsAudio=null;}
  if(window.speechSynthesis)speechSynthesis.cancel();
+ _ttsClearHl();
  ttsHideBar();
 }
+
 function ttsSetSpeed(){
  const spd=parseFloat(document.getElementById('tts-speed').value||'0.9');
  if(_ttsAudio){_ttsAudio.playbackRate=Math.min(Math.max(spd,0.5),2.0);return;}
  if(!window.speechSynthesis)return;
  if(speechSynthesis.speaking&&S.lid){ttsRead(S.lid);}
 }
+
 function ttsShowBar(){
  const b=document.getElementById('tts-bar');
  if(b)b.style.display='flex';
