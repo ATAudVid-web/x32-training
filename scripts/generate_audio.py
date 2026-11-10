@@ -126,49 +126,50 @@ process.stdout.write(JSON.stringify(L));
     return None
 
 
-def _ms_to_vtt(ms):
-    """Convert milliseconds to WebVTT timestamp HH:MM:SS.mmm"""
-    s_total = ms // 1000
-    ms_rem = ms % 1000
-    h = s_total // 3600
-    m = (s_total % 3600) // 60
-    s = s_total % 60
-    return f"{h:02d}:{m:02d}:{s:02d}.{ms_rem:03d}"
-
-
-async def generate_audio(lesson_id, text, output_dir):
-    """Generate MP3 + WebVTT files using edge-tts streaming API."""
-    import edge_tts
+def generate_audio(lesson_id, text, output_dir):
+    """
+    Generate MP3 + WebVTT files using the edge-tts CLI.
+    The CLI's --write-subtitles flag reliably produces word-level timing cues.
+    """
+    import tempfile
 
     mp3_path = os.path.join(output_dir, f"lesson-{lesson_id}.mp3")
     vtt_path = os.path.join(output_dir, f"lesson-{lesson_id}.vtt")
 
-    communicate = edge_tts.Communicate(text, VOICE)
+    # Write text to a temp file to avoid any shell argument length limits
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".txt", delete=False, encoding="utf-8"
+    ) as tf:
+        tf.write(text)
+        tf_path = tf.name
 
-    mp3_chunks = []
-    vtt_lines = ["WEBVTT", ""]  # VTT header
-
-    async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            mp3_chunks.append(chunk["data"])
-        elif chunk["type"] == "WordBoundary":
-            # offset and duration are in 100-nanosecond units
-            start_ms = chunk["offset"] // 10000
-            dur_ms = chunk["duration"] // 10000
-            end_ms = start_ms + dur_ms
-            vtt_lines.append(f"{_ms_to_vtt(start_ms)} --> {_ms_to_vtt(end_ms)}")
-            vtt_lines.append(chunk["text"])
-            vtt_lines.append("")
-
-    with open(mp3_path, "wb") as f:
-        for c in mp3_chunks:
-            f.write(c)
-    with open(vtt_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(vtt_lines))
+    try:
+        result = subprocess.run(
+            [
+                "edge-tts",
+                "--voice", VOICE,
+                "-f", tf_path,
+                "--write-media", mp3_path,
+                "--write-subtitles", vtt_path,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"edge-tts CLI error (lesson {lesson_id}):\n{result.stderr[:400]}"
+            )
+    finally:
+        os.unlink(tf_path)
 
     size_kb = os.path.getsize(mp3_path) // 1024
-    cue_count = sum(1 for l in vtt_lines if " --> " in l)
-    print(f"  ✓ lesson-{lesson_id}.mp3 ({size_kb} KB, {len(text)} chars) + VTT ({cue_count} cues)")
+    with open(vtt_path, encoding="utf-8") as f:
+        cue_count = sum(1 for line in f if " --> " in line)
+    print(
+        f"  ✓ lesson-{lesson_id}.mp3 ({size_kb} KB, {len(text)} chars)"
+        f" + VTT ({cue_count} cues)"
+    )
 
 
 async def main():
@@ -197,7 +198,7 @@ async def main():
         lid = lesson["id"]
         text = lesson_to_text(lesson)
         total_chars += len(text)
-        await generate_audio(lid, text, OUTPUT_DIR)
+        generate_audio(lid, text, OUTPUT_DIR)
 
     print(f"\nDone! {len(lessons)} MP3+VTT pairs generated ({total_chars} total chars)")
     print(f"Files saved to: {OUTPUT_DIR}/")
