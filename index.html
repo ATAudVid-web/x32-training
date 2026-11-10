@@ -1286,13 +1286,15 @@ function _ttsClearHl(){
  if(w){w.style.display='none';w.innerHTML='';}
 }
 
-// Parse a WebVTT string → [{start,end,text}] (times in seconds)
+// Parse a VTT/SRT string → [{start,end,text}] (times in seconds)
+// Handles both WebVTT (HH:MM:SS.mmm) and SRT (HH:MM:SS,mmm) timestamps
 function _parseVTT(raw){
  const cues=[];
  const lines=raw.split('\n');
- const toSec=t=>{const p=t.split(':').map(parseFloat);return p[0]*3600+p[1]*60+p[2];};
+ // Replace comma with dot so parseFloat handles both formats
+ const toSec=t=>{const p=t.replace(',','.').split(':').map(parseFloat);return p[0]*3600+p[1]*60+p[2];};
  for(let i=0;i<lines.length;i++){
-  const m=lines[i].match(/^(\d+:\d+:\d+\.\d+)\s*-->\s*(\d+:\d+:\d+\.\d+)/);
+  const m=lines[i].match(/^(\d+:\d+:\d+[,\.]\d+)\s*-->\s*(\d+:\d+:\d+[,\.]\d+)/);
   if(m){
    const txt=(lines[i+1]||'').trim();
    if(txt)cues.push({start:toSec(m[1]),end:toSec(m[2]),text:txt});
@@ -1301,23 +1303,22 @@ function _parseVTT(raw){
  return cues;
 }
 
-// Map VTT cues → charOffsets in fullText, then poll audio.currentTime
+// Map cues → charOffsets in fullText using first few words, then poll audio.currentTime
 function _ttsStartVtt(audio,cues,fullText){
+ const ftL=fullText.toLowerCase();
  let pos=0;
  const mapped=cues.map(c=>{
-  // strip punctuation to search for the core word
-  const bare=c.text.replace(/[^\w]/g,'').toLowerCase();
-  let found=-1;
-  for(let i=pos;i<fullText.length-bare.length+1;i++){
-   if(fullText.slice(i,i+bare.length).toLowerCase()===bare){found=i;break;}
-  }
-  if(found!==-1)pos=found+bare.length;
+  // Search using the first 4+ words of the cue text (cues are sentence-level)
+  const words=c.text.replace(/<[^>]+>/g,'').replace(/[^\w\s]/g,' ').trim().split(/\s+/);
+  const needle=words.slice(0,Math.min(4,words.length)).join(' ').toLowerCase();
+  const found=ftL.indexOf(needle,pos);
+  if(found!==-1)pos=found+needle.length;
   return{...c,off:found!==-1?found:pos};
  });
  _ttsVttInterval=setInterval(()=>{
   if(!audio||audio.paused)return;
   const t=audio.currentTime;
-  // find the last cue whose start <= t
+  // last cue whose start ≤ currentTime
   let best=-1;
   for(let i=0;i<mapped.length;i++){if(mapped[i].start<=t)best=i;else break;}
   if(best>=0)_ttsHlAt(mapped[best].off);
