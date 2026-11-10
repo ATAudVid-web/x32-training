@@ -2,16 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" ontent="width=device-width, initial-scale=1.0">
 <title>X32 Volunteer Training Hub</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <!-- Firebase SDKs (compat — no bundler needed) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="http://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 <style>
-:root{--bg:#0a0f1e;--s1:#0f172a;--s2:#1e293b;--s3:#334155;--t:#f1f5f9;--m:#94a3b8;--ac:#0ea5e9;--ad:rgba(14,165,233,.13);--ok:#22c55e;--od:rgba(34,197,94,.13);--wn:#f59e0b;--wd:rgba(245,158,11,.13);--er:#ef4444;--ed:rgba(239,68,68,.13);--r:10px;--sw:268px}
+:root{--bg:#0a0f1e;--s1:#0f172a;--s2#1e293b;--s3:#334155;--t:#f1f5f9;--m:#94a3b8;--ac:#0ea5e9;--ad:rgba(14,165,233,.13);--ok:#22c55e;--od:rgba(34,197,94,.13);--wn:#f59e0b;--wd:rgba(245,158,11,.13);--er:#ef4444;--ed:rgba(239,68,68,.13);--r:10px;--sw:268px}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--t);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.5}
 /* Layout */
@@ -393,6 +393,12 @@ textarea.nta::placeholder{color:var(--s3)}
       </div>
       <div id="auth-status" class="auth-status"></div>
       <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--m)"><a href="#" onclick="doResetPassword();return false" style="color:var(--ac)">Forgot password?</a></div>
+    </div>
+    <!-- Guest mode -->
+    <div style="margin-top:16px;text-align:center;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;color:var(--m);font-size:12px"><div style="flex:1;height:1px;background:var(--s3)"></div>or<div style="flex:1;height:1px;background:var(--s3)"></div></div>
+      <button class="btn btn-o" style="width:100%;justify-content:center;" onclick="loginGuest()">👤 Continue as Guest</button>
+      <div style="font-size:11px;color:var(--m);margin-top:7px;">Browse all lessons — progress won't be saved</div>
     </div>
     <!-- Offline fallback (when Firebase not configured) -->
     <div id="offline-form" style="display:none">
@@ -1052,6 +1058,9 @@ async function doAuth(){
  }
 }
 
+function loginGuest(){
+ loginUser({id:'guest',name:'Guest',email:'',role:'guest'});
+}
 async function doResetPassword(){
  const email=document.getElementById('auth-email').value.trim();
  if(!email){setAuthStatus('Enter your email above first.','var(--wn)');return;}
@@ -1162,7 +1171,7 @@ function updateUserChip(){
     <div class="sb-uav">${initials(CU.name)}</div>
     <div style="flex:1;text-align:left">
      <div class="sb-uname">${CU.name}</div>
-     <div class="sb-uswitch">${CU.role==='admin'?'🛡️ Admin · ':CU.role==='trainer'?'👩‍🏫 Trainer · ':CU.role==='lead'?'⭐ Lead · ':'🎓 Volunteer · '}Tap to sign out</div>
+     <div class="sb-uswitch">${CU.role==='admin'?'🛡️ Admin · ':CU.role==='trainer'?'👩‍🏫 Trainer · ':CU.role==='lead'?'⭐ Lead · ':CU.role==='guest'?'👤 Guest · ':'🎓 Volunteer · '}${CU.role==='guest'?'Tap to sign in':'Tap to sign out'}</div>
     </div>
    </button>
   </div>`;
@@ -1183,18 +1192,18 @@ function gS(){if(!CU)return{};return getS_u(CU.id)}
 
 // Write to localStorage immediately, then sync to Firestore
 function sP(d){
- if(!CU)return;
+ if(!CU||CU.role==='guest')return;
  localStorage.setItem('x32p_'+CU.id,JSON.stringify(d));
  syncProgress();
 }
 function sN(id,t){
- if(!CU)return;
+ if(!CU||CU.role==='guest')return;
  const n=gN();n[id]=t;
  localStorage.setItem('x32n_'+CU.id,JSON.stringify(n));
  syncProgress();
 }
 function svS(id,sc,tot){
- if(!CU)return;
+ if(!CU||CU.role==='guest')return;
  const s=gS();s[id]={sc,tot,pct:Math.round(sc/tot*100)};
  localStorage.setItem('x32s_'+CU.id,JSON.stringify(s));
  syncProgress();
@@ -1221,7 +1230,7 @@ function syncProgress(){
 
 // ═══════════════════════════════════════════
 // TEXT-TO-SPEECH
-let _ttsUtts=[];
+
 function lessonToText(id){
  const l=L.find(x=>x.id===id);
  if(!l)return'';
