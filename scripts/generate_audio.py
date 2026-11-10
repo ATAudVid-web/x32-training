@@ -148,7 +148,7 @@ async def generate_audio(lesson_id, text, output_dir):
     mp3_chunks = []
     vtt_lines = ["WEBVTT", ""]  # VTT header
 
-    async for chunk in communicate:
+    async for chunk in communicate.stream():
         if chunk["type"] == "audio":
             mp3_chunks.append(chunk["data"])
         elif chunk["type"] == "WordBoundary":
